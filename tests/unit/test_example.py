@@ -1,6 +1,7 @@
 """Basic unit tests for example module."""
 
 import pytest
+
 from hibikasu_agent.core.example import ExampleConfig
 
 
@@ -19,6 +20,6 @@ class TestExampleConfig:
             ExampleConfig(name="test", max_items=0)
 
     def test_negative_max_items_raises_error(self) -> None:
-        """Test that negative max_items raises ValueError.""" 
+        """Test that negative max_items raises ValueError."""
         with pytest.raises(ValueError, match="max_items must be positive"):
             ExampleConfig(name="test", max_items=-1)

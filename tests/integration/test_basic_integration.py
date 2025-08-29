@@ -6,7 +6,7 @@ from hibikasu_agent.core.example import ExampleConfig
 def test_config_integration_with_default_values() -> None:
     """Test integration between components with default values."""
     config = ExampleConfig(name="integration_test")
-    
+
     # Test that default values work together
     assert config.name == "integration_test"
     assert config.max_items == 100
@@ -20,7 +20,7 @@ def test_config_integration_with_custom_values() -> None:
         max_items=50,
         enable_validation=False,
     )
-    
+
     # Test that custom values work together
     assert config.name == "custom_test"
     assert config.max_items == 50
