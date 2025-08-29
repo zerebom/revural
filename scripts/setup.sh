@@ -244,7 +244,7 @@ init_git() {
         print_step "Git initialization skipped (initialize_git=false)"
         return 0
     fi
-    
+
     if [ ! -d ".git" ]; then
         print_step "Initializing git repository..."
         git init

@@ -83,6 +83,9 @@ class FacilitatorAgent:
             agent = create_persona_llm_agent(persona, model)
             self.persona_agents.append(agent)
 
+        # Create transfer tool for agent communication
+        self.transfer_tool = self._create_transfer_tool()
+
         # Create the main facilitator agent with sub-agents
         self._create_facilitator_agent()
 

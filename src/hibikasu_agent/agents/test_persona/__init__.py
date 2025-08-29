@@ -1,5 +1,5 @@
 """Test persona agent for ADK web."""
 
-from . import agent as agent
+from . import agent
 
 __all__ = ["agent"]
