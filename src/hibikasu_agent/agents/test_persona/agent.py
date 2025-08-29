@@ -15,7 +15,7 @@ test_persona = Persona(
 # Create root_agent as required by ADK
 root_agent = LlmAgent(
     name=f"persona_{test_persona.name.replace(' ', '_')}",
-    model="gemini-2.5-flash-lite",
+    model="gemini-2.5-flash",
     description=f"AI persona: {test_persona.name} - {test_persona.occupation}",
     instruction=(
         f"あなたは{test_persona.name}、{test_persona.age}歳の{test_persona.occupation}です。"

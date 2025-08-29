@@ -24,7 +24,7 @@ class PersonaAgent:
     def __init__(
         self,
         persona: Persona,
-        model: str = "gemini-2.5-flash-lite",
+        model: str = "gemini-2.5-flash",
     ):
         """Initialize a Persona Agent.
 

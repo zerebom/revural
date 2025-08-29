@@ -12,7 +12,7 @@ logger = get_logger(__name__)
 
 
 def create_persona_llm_agent(
-    persona: Persona, model: str = "gemini-2.5-flash-lite"
+    persona: Persona, model: str = "gemini-2.5-flash"
 ) -> LlmAgent:
     """Create an LlmAgent for a persona that can be used as a sub-agent.
 
@@ -33,6 +33,9 @@ def create_persona_llm_agent(
         f"性格: {persona.personality}\n\n"
         f"議論において、あなたの立場から意見を述べてください。"
         f"簡潔で自然な日本語で回答し、あなたの専門性と性格を反映した視点を提供してください。"
+        f"\n\n【重要】: あなたは議論の参加者として発言するのみです。"
+        f"司会者や他の参加者を呼び出すことはありません。"
+        f"transfer_to_agent等の関数は使用しないでください。"
     )
 
     description = (
@@ -62,7 +65,7 @@ class FacilitatorAgent:
     def __init__(
         self,
         project_settings: ProjectSettings,
-        model: str = "gemini-2.5-flash-lite",
+        model: str = "gemini-2.5-flash",
         max_turns: int = 5,
     ):
         """Initialize the Facilitator Agent.
@@ -82,9 +85,6 @@ class FacilitatorAgent:
         for persona in project_settings.personas:
             agent = create_persona_llm_agent(persona, model)
             self.persona_agents.append(agent)
-
-        # Create transfer tool for agent communication
-        self.transfer_tool = self._create_transfer_tool()
 
         # Create the main facilitator agent with sub-agents
         self._create_facilitator_agent()
@@ -118,7 +118,7 @@ class FacilitatorAgent:
                 "各参加者から多様で建設的な意見を引き出します。"
             ),
             instruction=instruction,
-            sub_agents=cast(list[BaseAgent], self.persona_agents),
+            sub_agents=cast("list[BaseAgent]", self.persona_agents),
         )
 
         logger.debug(

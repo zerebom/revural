@@ -30,7 +30,7 @@ class MiniFacilitator:
         self,
         project_settings: ProjectSettings,
         max_turns: int = 10,
-        model: str = "gemini-2.5-flash-lite",
+        model: str = "gemini-2.5-flash",
     ):
         """Initialize the mini-facilitator.
 
@@ -228,7 +228,7 @@ async def main():
     parser.add_argument(
         "--model",
         type=str,
-        default="gemini-2.5-flash-lite",
+        default="gemini-2.5-flash",
         help="LLM model to use",
     )
     parser.add_argument(

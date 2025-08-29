@@ -87,7 +87,7 @@ python tests/scripts/run_discussion.py --debug
 - `--topic`: 議論のトピックを指定
 - `--output`: 議論ログの保存先パス
 - `--max-turns`: 議論のターン数（デフォルト: 5）
-- `--model`: 使用するLLMモデル（デフォルト: gemini-2.5-flash-lite）
+- `--model`: 使用するLLMモデル（デフォルト: gemini-2.5-flash）
 - `--debug`: デバッグログを有効化
 
 ## 開発

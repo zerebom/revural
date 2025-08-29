@@ -40,7 +40,7 @@ project_settings = ProjectSettings(
 # Create facilitator agent
 facilitator_agent = FacilitatorAgent(
     project_settings=project_settings,
-    model="gemini-2.5-flash-lite",
+    model="gemini-2.5-flash",
     max_turns=5,
 )
 

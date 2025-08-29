@@ -5,9 +5,7 @@ from google.adk.agents import LlmAgent
 from hibikasu_agent.schemas import Persona
 
 
-def create_persona_agent(
-    persona: Persona, model: str = "gemini-2.5-flash-lite"
-) -> LlmAgent:
+def create_persona_agent(persona: Persona, model: str = "gemini-2.5-flash") -> LlmAgent:
     """Create a Persona Agent compatible with ADK structure.
 
     Args:

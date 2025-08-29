@@ -154,18 +154,17 @@ def create_facilitator_prompt(
 6. {max_turns}ターン実施して、最後に議論全体を総括してください
 
 【重要: 参加者エージェント転送の手順】
-1. 佐藤さん → transfer_to_agent(agent_name="persona_sato_takuya")
-2. 田中さん → transfer_to_agent(agent_name="persona_tanaka_misaki")
-3. 山田さん → transfer_to_agent(agent_name="persona_yamada_kenta")
+利用可能なエージェント名:
+- 佐藤さん: "persona_佐藤_拓也"
+- 田中さん: "persona_田中_美咲"  
+- 山田さん: "persona_山田_健太"
 
-【自動進行パターン（必須）】
-参加者の応答直後：
-"[簡潔なコメント]。田中さん、マーケティングの専門家として、この点についていかがお考えでしょうか？"
-→ 即座にtransfer_to_agent(agent_name="persona_tanaka_misaki")を実行
+【自動進行の具体例】
+1. 議論開始時: "佐藤さん、ITエンジニアの視点からお聞かせください。" → transfer_to_agent(agent_name="persona_佐藤_拓也")
+2. 佐藤さんの回答後: "ありがとうございます。田中さん、マーケティング専門家としてのご意見は？" → transfer_to_agent(agent_name="persona_田中_美咲")
+3. 田中さんの回答後: "なるほど。山田さんはいかがでしょうか？" → transfer_to_agent(agent_name="persona_山田_健太")
 
-**重要**: 応答を受け取ったら、必ずユーザーの入力を待たずに自動で
-次のアクションを取ってください。手動介入を一切必要としない
-完全自動進行を目指してください。
+**制御フロー**: あなたが参加者に質問→transfer_to_agent呼び出し→参加者が回答→制御があなたに戻る→次の参加者に質問→transfer_to_agent呼び出し...
 
 【順序制御】
 1. 最初: 佐藤さん（IT視点）
