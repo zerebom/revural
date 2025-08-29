@@ -1,7 +1,7 @@
 [project]
 name = "hibikasu-agent"
 version = "0.1.0"
-description = "A short description of the project"
+description = "Virtual focus group system using Google ADK for multi-agent discussions"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -32,7 +32,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/hibikasu_agent", "src"]
+packages = ["src/hibikasu_agent"]
 
 [tool.ruff]
 line-length = 88

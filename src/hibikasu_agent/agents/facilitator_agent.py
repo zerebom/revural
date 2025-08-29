@@ -22,14 +22,7 @@ def create_persona_llm_agent(
         LlmAgent configured for the persona.
     """
     # Create safe English agent name based on persona
-    name_mapping = {
-        "佐藤 拓也": "sato_takuya",
-        "田中 美咲": "tanaka_misaki",
-        "山田 健太": "yamada_kenta",
-    }
-    safe_name = name_mapping.get(
-        persona.name, persona.name.replace(" ", "_").replace("　", "_")
-    )
+    safe_name = persona.name.replace(" ", "_").replace("　", "_")
     agent_name = f"persona_{safe_name}"
 
     # Create instruction with persona context

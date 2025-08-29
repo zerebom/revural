@@ -13,40 +13,19 @@ class StructuredLogger:
 
     def debug(self, message: str, **kwargs: Any) -> None:
         """Log debug message with structured data."""
-        if kwargs:
-            formatted_msg = f"{message} | {self._format_kwargs(kwargs)}"
-        else:
-            formatted_msg = message
-        self.logger.debug(formatted_msg)
+        self.logger.debug(message, extra=kwargs)
 
     def info(self, message: str, **kwargs: Any) -> None:
         """Log info message with structured data."""
-        if kwargs:
-            formatted_msg = f"{message} | {self._format_kwargs(kwargs)}"
-        else:
-            formatted_msg = message
-        self.logger.info(formatted_msg)
+        self.logger.info(message, extra=kwargs)
 
     def warning(self, message: str, **kwargs: Any) -> None:
         """Log warning message with structured data."""
-        if kwargs:
-            formatted_msg = f"{message} | {self._format_kwargs(kwargs)}"
-        else:
-            formatted_msg = message
-        self.logger.warning(formatted_msg)
+        self.logger.warning(message, extra=kwargs)
 
     def error(self, message: str, exc_info: bool = False, **kwargs: Any) -> None:
         """Log error message with structured data."""
-        if kwargs:
-            formatted_msg = f"{message} | {self._format_kwargs(kwargs)}"
-        else:
-            formatted_msg = message
-        self.logger.error(formatted_msg, exc_info=exc_info)
-
-    def _format_kwargs(self, kwargs: dict[str, Any]) -> str:
-        """Format keyword arguments for logging."""
-        items = [f"{key}={value}" for key, value in kwargs.items()]
-        return " ".join(items)
+        self.logger.error(message, exc_info=exc_info, extra=kwargs)
 
 
 def get_logger(name: str) -> StructuredLogger:

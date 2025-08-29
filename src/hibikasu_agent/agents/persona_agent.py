@@ -46,6 +46,10 @@ class PersonaAgent:
             ),
         )
 
+        # Create runner once and reuse it
+        app_name = f"persona_app_{self.persona.name.replace(' ', '_')}"
+        self.runner = InMemoryRunner(agent=self.agent, app_name=app_name)
+
         logger.info(
             "PersonaAgent initialized",
             persona_name=persona.name,
@@ -69,22 +73,18 @@ class PersonaAgent:
 
         prompt = create_initial_prompt(self.persona, topic)
 
-        # Use runner with proper session management
-        app_name = f"persona_app_{self.persona.name.replace(' ', '_')}"
-        runner = InMemoryRunner(agent=self.agent, app_name=app_name)
-
-        # Create session through the runner's session service
+        # Use the shared runner instance
         session_id = str(uuid4())
         user_id = "user"
-        session = await runner.session_service.create_session(
-            app_name=app_name, user_id=user_id, session_id=session_id
+        session = await self.runner.session_service.create_session(
+            app_name=self.runner.app_name, user_id=user_id, session_id=session_id
         )
 
         message = types.Content(parts=[types.Part(text=prompt)], role="user")
 
         # Collect all events from the async generator
         events = []
-        async for event in runner.run_async(
+        async for event in self.runner.run_async(
             session_id=session_id,
             user_id=user_id,
             new_message=message,
@@ -129,22 +129,18 @@ class PersonaAgent:
             self.persona, topic, discussion_history, moderator_input
         )
 
-        # Use runner with proper session management
-        app_name = f"persona_app_{self.persona.name.replace(' ', '_')}"
-        runner = InMemoryRunner(agent=self.agent, app_name=app_name)
-
-        # Create session through the runner's session service
+        # Use the shared runner instance
         session_id = str(uuid4())
         user_id = "user"
-        session = await runner.session_service.create_session(
-            app_name=app_name, user_id=user_id, session_id=session_id
+        session = await self.runner.session_service.create_session(
+            app_name=self.runner.app_name, user_id=user_id, session_id=session_id
         )
 
         message = types.Content(parts=[types.Part(text=prompt)], role="user")
 
         # Collect all events from the async generator
         events = []
-        async for event in runner.run_async(
+        async for event in self.runner.run_async(
             session_id=session_id,
             user_id=user_id,
             new_message=message,
