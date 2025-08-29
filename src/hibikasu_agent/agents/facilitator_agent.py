@@ -1,6 +1,8 @@
 """Facilitator Agent implementation using Google ADK with multi-agent orchestration."""
 
-from google.adk.agents import LlmAgent
+from typing import cast
+
+from google.adk.agents import BaseAgent, LlmAgent
 
 from hibikasu_agent.agents.prompts import create_facilitator_prompt
 from hibikasu_agent.schemas import Persona, ProjectSettings, Utterance
@@ -92,7 +94,7 @@ class FacilitatorAgent:
             max_turns=max_turns,
         )
 
-    def _create_facilitator_agent(self):
+    def _create_facilitator_agent(self) -> None:
         """Create the main facilitator LlmAgent with persona sub-agents."""
         persona_names = [agent.name for agent in self.persona_agents]
         persona_descriptions = [
@@ -113,7 +115,7 @@ class FacilitatorAgent:
                 "各参加者から多様で建設的な意見を引き出します。"
             ),
             instruction=instruction,
-            sub_agents=self.persona_agents,
+            sub_agents=cast(list[BaseAgent], self.persona_agents),
         )
 
         logger.debug(
