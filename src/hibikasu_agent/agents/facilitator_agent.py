@@ -3,6 +3,7 @@
 from typing import cast
 
 from google.adk.agents import BaseAgent, LlmAgent
+from google.adk.tools import agent_tool
 
 from hibikasu_agent.agents.prompts import create_facilitator_prompt
 from hibikasu_agent.schemas import Persona, ProjectSettings, Utterance
@@ -80,13 +81,18 @@ class FacilitatorAgent:
         self.max_turns = max_turns
         self.discussion_log: list[Utterance] = []
 
-        # Create LlmAgent for each persona as sub-agents
+        # Create LlmAgent for each persona and wrap as AgentTools
         self.persona_agents: list[LlmAgent] = []
+        self.persona_tools: list[agent_tool.AgentTool] = []
+
         for persona in project_settings.personas:
             agent = create_persona_llm_agent(persona, model)
             self.persona_agents.append(agent)
+            # Wrap agent as a tool for explicit invocation
+            tool = agent_tool.AgentTool(agent=agent)
+            self.persona_tools.append(tool)
 
-        # Create the main facilitator agent with sub-agents
+        # Create the main facilitator agent with persona agents as tools
         self._create_facilitator_agent()
 
         logger.info(

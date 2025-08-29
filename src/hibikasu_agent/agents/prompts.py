@@ -156,15 +156,21 @@ def create_facilitator_prompt(
 【重要: 参加者エージェント転送の手順】
 利用可能なエージェント名:
 - 佐藤さん: "persona_佐藤_拓也"
-- 田中さん: "persona_田中_美咲"  
+- 田中さん: "persona_田中_美咲"
 - 山田さん: "persona_山田_健太"
 
 【自動進行の具体例】
-1. 議論開始時: "佐藤さん、ITエンジニアの視点からお聞かせください。" → transfer_to_agent(agent_name="persona_佐藤_拓也")
-2. 佐藤さんの回答後: "ありがとうございます。田中さん、マーケティング専門家としてのご意見は？" → transfer_to_agent(agent_name="persona_田中_美咲")
-3. 田中さんの回答後: "なるほど。山田さんはいかがでしょうか？" → transfer_to_agent(agent_name="persona_山田_健太")
+1. 議論開始時: "佐藤さん、ITエンジニアの視点からお聞かせください。"
+   → transfer_to_agent(agent_name="persona_佐藤_拓也")
+2. 佐藤さんの回答後: "ありがとうございます。
+   田中さん、マーケティング専門家としてのご意見は？"
+   → transfer_to_agent(agent_name="persona_田中_美咲")
+3. 田中さんの回答後: "なるほど。山田さんはいかがでしょうか？"
+   → transfer_to_agent(agent_name="persona_山田_健太")
 
-**制御フロー**: あなたが参加者に質問→transfer_to_agent呼び出し→参加者が回答→制御があなたに戻る→次の参加者に質問→transfer_to_agent呼び出し...
+**制御フロー**: あなたが参加者に質問 → transfer_to_agent呼び出し
+→ 参加者が回答 → 制御があなたに戻る → 次の参加者に質問
+→ transfer_to_agent呼び出し...
 
 【順序制御】
 1. 最初: 佐藤さん（IT視点）
