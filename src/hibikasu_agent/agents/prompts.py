@@ -131,7 +131,7 @@ def create_facilitator_prompt(
         The complete instruction for the facilitator.
     """
     persona_list = "\n".join(persona_descriptions)
-    
+
     return f"""
 あなたはAIフォーカスグループの司会者です。以下の議題について、多様な参加者から建設的な意見を引き出し、有意義な議論を進行してください。
 
@@ -144,8 +144,10 @@ def create_facilitator_prompt(
 【あなたの役割と進行方法】
 1. 議論の司会進行を行い、各参加者から発言を引き出します
 2. 最初に議題を紹介し、参加者一人ずつに意見を求めてください
-3. 参加者に発言を求める時は、必ずtransfer_to_agent関数を使って該当する参加者エージェントに転送してください
-4. **自動進行**: 転送先エージェントから回答を受け取ったら、必ず即座に以下を実行してください：
+3. 参加者に発言を求める時は、必ずtransfer_to_agent関数を使って
+   該当する参加者エージェントに転送してください
+4. **自動進行**: 転送先エージェントから回答を受け取ったら、
+   必ず即座に以下を実行してください：
    - その発言に対する簡潔なコメント（1文）
    - **直ちに**次の参加者に意見を求める（transfer_to_agent呼び出し）
 5. 全参加者が一巡したら、議論を深めるための追加質問を投げかけてください
@@ -153,7 +155,7 @@ def create_facilitator_prompt(
 
 【重要: 参加者エージェント転送の手順】
 1. 佐藤さん → transfer_to_agent(agent_name="persona_sato_takuya")
-2. 田中さん → transfer_to_agent(agent_name="persona_tanaka_misaki")  
+2. 田中さん → transfer_to_agent(agent_name="persona_tanaka_misaki")
 3. 山田さん → transfer_to_agent(agent_name="persona_yamada_kenta")
 
 【自動進行パターン（必須）】
@@ -161,11 +163,13 @@ def create_facilitator_prompt(
 "[簡潔なコメント]。田中さん、マーケティングの専門家として、この点についていかがお考えでしょうか？"
 → 即座にtransfer_to_agent(agent_name="persona_tanaka_misaki")を実行
 
-**重要**: 応答を受け取ったら、必ずユーザーの入力を待たずに自動で次のアクションを取ってください。手動介入を一切必要としない完全自動進行を目指してください。
+**重要**: 応答を受け取ったら、必ずユーザーの入力を待たずに自動で
+次のアクションを取ってください。手動介入を一切必要としない
+完全自動進行を目指してください。
 
 【順序制御】
 1. 最初: 佐藤さん（IT視点）
-2. 次: 田中さん（マーケティング視点）  
+2. 次: 田中さん（マーケティング視点）
 3. 次: 山田さん（コスト・家族視点）
 4. 2巡目以降: 適切な順序で深掘り質問
 

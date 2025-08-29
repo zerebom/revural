@@ -55,7 +55,7 @@ def create_persona_llm_agent(
 
 
 class FacilitatorAgent:
-    """AI Facilitator Agent that manages multi-persona discussions using ADK sub-agents."""
+    """AI Facilitator Agent that manages multi-persona discussions using ADK."""
 
     def __init__(
         self,

@@ -1,3 +1,5 @@
 """Facilitator agent for ADK Web."""
 
-from . import agent
+from . import agent as agent
+
+__all__ = ["agent"]

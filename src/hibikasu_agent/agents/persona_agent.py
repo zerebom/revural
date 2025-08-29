@@ -76,7 +76,7 @@ class PersonaAgent:
         # Use the shared runner instance
         session_id = str(uuid4())
         user_id = "user"
-        session = await self.runner.session_service.create_session(
+        await self.runner.session_service.create_session(
             app_name=self.runner.app_name, user_id=user_id, session_id=session_id
         )
 
@@ -132,7 +132,7 @@ class PersonaAgent:
         # Use the shared runner instance
         session_id = str(uuid4())
         user_id = "user"
-        session = await self.runner.session_service.create_session(
+        await self.runner.session_service.create_session(
             app_name=self.runner.app_name, user_id=user_id, session_id=session_id
         )
 
