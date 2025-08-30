@@ -7,6 +7,7 @@ from google.adk.agents import LlmAgent
 from google.adk.events import Event
 from google.adk.runners import InMemoryRunner
 from google.genai import types
+
 from hibikasu_agent.agents.prompts import (
     create_initial_prompt,
     create_persona_prompt,
@@ -23,7 +24,7 @@ class PersonaAgent:
     def __init__(
         self,
         persona: Persona,
-        model: str = "gemini-2.5-flash",
+        model: str = "gemini-2.5-flash-lite",
     ):
         """Initialize a Persona Agent.
 

@@ -1,7 +1,6 @@
 """Pytest configuration and fixtures."""
 
 import pytest
-
 from hibikasu_agent.core.example import ExampleConfig
 
 

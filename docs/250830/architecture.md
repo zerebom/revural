@@ -17,7 +17,7 @@ graph TD
     User["ユーザー"] --> Orchestrator["Review Orchestrator Agent<br/>(Coordinator)"]
     Orchestrator -- "1. PRDレビュー依頼<br/>(ADK workflow coordination)" --> SpecAgents["Specialist Agents<br/>(sub_agents並行実行)"]
     SpecAgents -- "2. 各エージェントがJSON返却" --> Orchestrator
-    Orchestrator -- "3. 結果統合・優先順位付け" --> Orchestrator  
+    Orchestrator -- "3. 結果統合・優先順位付け" --> Orchestrator
     Orchestrator -- "4. 最終論点リストJSON" --> User
     User -- "5. 論点詳細質問" --> Orchestrator
     Orchestrator -- "6. 該当specialistと対話" --> SpecAgents
@@ -41,16 +41,16 @@ engineer_agent = LlmAgent(
     あなたは経験豊富なバックエンドエンジニアです。
     以下の観点からPRDをレビューしてください:
     - スケーラビリティ、パフォーマンス、セキュリティ、データベース設計、API設計
-    
+
     必ずJSON形式で指摘リストを返してください:
     [{"severity": "High|Mid|Low", "comment": "具体的な指摘内容", "original_text": "指摘箇所のPRD原文引用"}, ...]
     """
 )
 
-# UX Designer Agent  
+# UX Designer Agent
 ux_designer_agent = LlmAgent(
     name="ux_designer_specialist",
-    model="gemini-2.5-flash", 
+    model="gemini-2.5-flash",
     description="UXデザイナーの専門的観点からPRDをレビュー",
     instruction="..." # prompts/agents.tomlから読み込み
 )
@@ -59,13 +59,13 @@ ux_designer_agent = LlmAgent(
 qa_tester_agent = LlmAgent(
     name="qa_tester_specialist",
     model="gemini-2.5-flash",
-    description="QAテスターの専門的観点からPRDをレビュー", 
+    description="QAテスターの専門的観点からPRDをレビュー",
     instruction="..." # prompts/agents.tomlから読み込み
 )
 
 # PM Agent
 pm_agent = LlmAgent(
-    name="pm_specialist", 
+    name="pm_specialist",
     model="gemini-2.5-flash",
     description="プロダクトマネージャーの専門的観点からPRDをレビュー",
     instruction="..." # prompts/agents.tomlから読み込み
@@ -79,13 +79,13 @@ pm_agent = LlmAgent(
 ```python
 orchestrator = LlmAgent(
     name="review_orchestrator",
-    model="gemini-2.5-flash", 
+    model="gemini-2.5-flash",
     description="PRDレビューを統合管理するコーディネーター",
     instruction="""
     あなたはPRDレビューオーケストレーターです。
     ユーザーからPRDを受け取り、専門エージェント群に並行レビューを依頼し、
     結果を統合・優先順位付けして論点リストを提供してください。
-    
+
     【処理フロー】
     1. PRDレビュー依頼→specialist agentsに並行実行指示
     2. 各agentからの指摘を収集・統合
@@ -94,7 +94,7 @@ orchestrator = LlmAgent(
     """,
     sub_agents=[
         engineer_agent,
-        ux_designer_agent, 
+        ux_designer_agent,
         qa_tester_agent,
         pm_agent
     ]
@@ -108,7 +108,7 @@ orchestrator = LlmAgent(
 - 各specialist agentは独立してPRDをレビューし、JSON形式の指摘リストを返却
 - orchestratorが全ての結果を収集・統合し、優先順位付けを実行
 
-### 4.2 フォーカスモード体験の実現  
+### 4.2 フォーカスモード体験の実現
 - orchestratorがユーザーとの継続的な対話をサポート
 - `issue_id`ベースで特定の論点について詳細質問が可能
 - 該当するspecialist agentとの対話を`transfer_to_agent`で実現

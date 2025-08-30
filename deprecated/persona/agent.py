@@ -1,7 +1,6 @@
 """Persona Agent for ADK integration."""
 
 from google.adk.agents import LlmAgent
-
 from hibikasu_agent.schemas import Persona
 
 

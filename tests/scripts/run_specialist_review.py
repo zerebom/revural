@@ -7,7 +7,6 @@ import sys
 from pathlib import Path
 
 import toml
-
 from hibikasu_agent.agents.specialist import (
     create_engineer_agent,
     create_pm_agent,
@@ -53,9 +52,7 @@ def create_agent_by_name(agent_name: str, model: str = "gemini-2.5-flash"):
 
 async def main():
     """Main function."""
-    parser = argparse.ArgumentParser(
-        description="Test Specialist Agent PRD review"
-    )
+    parser = argparse.ArgumentParser(description="Test Specialist Agent PRD review")
     parser.add_argument(
         "--prd",
         type=str,
@@ -145,4 +142,5 @@ async def main():
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(main())
