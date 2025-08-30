@@ -1,13 +1,14 @@
 [project]
-name = "hibikasu-agent"
+name = "hibikasu-prd-reviewer"
 version = "0.1.0"
-description = "Virtual focus group system using Google ADK for multi-agent discussions"
+description = "AI Review Panel system using Google ADK for PRD review by specialist agents"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "google-adk>=1.8.0",
     "pydantic>=2.0.0",
     "python-dotenv>=1.0.0",
+    "toml>=0.10.2",
 ]
 
 [project.optional-dependencies]
