@@ -1,11 +1,7 @@
 """Facilitator Agent implementation using Google ADK with multi-agent orchestration."""
 
-from typing import cast
+from google.adk.agents import LlmAgent
 
-from google.adk.agents import BaseAgent, LlmAgent
-from google.adk.tools import agent_tool
-
-from hibikasu_agent.agents.prompts import create_facilitator_prompt
 from hibikasu_agent.schemas import Persona, ProjectSettings, Utterance
 from hibikasu_agent.utils.logging_config import get_logger
 
@@ -15,28 +11,30 @@ logger = get_logger(__name__)
 def create_persona_llm_agent(
     persona: Persona, model: str = "gemini-2.5-flash"
 ) -> LlmAgent:
-    """Create an LlmAgent for a persona that can be used as a sub-agent.
+    """Create an LlmAgent for a persona that returns control to root agent.
 
     Args:
         persona: The persona configuration.
         model: The LLM model to use.
 
     Returns:
-        LlmAgent configured for the persona.
+        LlmAgent configured for the persona with explicit transfer back.
     """
     # Create safe English agent name based on persona
     safe_name = persona.name.replace(" ", "_").replace("　", "_")
     agent_name = f"persona_{safe_name}"
 
-    # Create instruction with persona context
+    # Persona instruction with explicit transfer_to_agent to root
     instruction = (
         f"あなたは{persona.name}、{persona.age}歳の{persona.occupation}です。"
         f"性格: {persona.personality}\n\n"
         f"議論において、あなたの立場から意見を述べてください。"
         f"簡潔で自然な日本語で回答し、あなたの専門性と性格を反映した視点を提供してください。"
-        f"\n\n【重要】: あなたは議論の参加者として発言するのみです。"
-        f"司会者や他の参加者を呼び出すことはありません。"
-        f"transfer_to_agent等の関数は使用しないでください。"
+        f"\n\n【重要】: 発言の流れは以下の通りです："
+        f"\n1. 3-4文程度で自分の意見を述べる"
+        f"\n2. 発言を終えた後、必ずtransfer_to_agent('focus_group_facilitator')を呼び出して司会者に制御を戻す"
+        f"\n\nこの手順を必ず実行してください。司会者が議論を継続するために重要です。"
+        f"\n他の参加者を直接呼び出すことはありません。必ず司会者に制御を戻してください。"
     )
 
     description = (
@@ -51,7 +49,7 @@ def create_persona_llm_agent(
     )
 
     logger.debug(
-        "Persona LlmAgent created",
+        "Persona LlmAgent created with explicit root transfer",
         persona_name=persona.name,
         agent_name=agent_name,
         model=model,
@@ -81,22 +79,17 @@ class FacilitatorAgent:
         self.max_turns = max_turns
         self.discussion_log: list[Utterance] = []
 
-        # Create LlmAgent for each persona and wrap as AgentTools
+        # Create persona agents as simple LlmAgents
         self.persona_agents: list[LlmAgent] = []
-        self.persona_tools: list[agent_tool.AgentTool] = []
-
         for persona in project_settings.personas:
             agent = create_persona_llm_agent(persona, model)
             self.persona_agents.append(agent)
-            # Wrap agent as a tool for explicit invocation
-            tool = agent_tool.AgentTool(agent=agent)
-            self.persona_tools.append(tool)
 
-        # Create the main facilitator agent with persona agents as tools
+        # Create facilitator with personas as sub-agents
         self._create_facilitator_agent()
 
         logger.info(
-            "FacilitatorAgent initialized",
+            "FacilitatorAgent initialized with simple sub-agent structure",
             project_name=project_settings.project_name,
             num_personas=len(project_settings.personas),
             model=model,
@@ -105,16 +98,28 @@ class FacilitatorAgent:
 
     def _create_facilitator_agent(self) -> None:
         """Create the main facilitator LlmAgent with persona sub-agents."""
-        persona_names = [agent.name for agent in self.persona_agents]
-        persona_descriptions = [
-            f"- {agent.name}: {agent.description}" for agent in self.persona_agents
-        ]
+        # Create facilitator instruction
+        instruction = f"""
+あなたはAIフォーカスグループの司会者です。以下の議題について議論を進行してください。
 
-        instruction = create_facilitator_prompt(
-            topic=self.project_settings.topic,
-            persona_descriptions=persona_descriptions,
-            max_turns=self.max_turns,
-        )
+【議題】
+{self.project_settings.topic}
+
+【参加者】
+{chr(10).join([f"- {persona.name} ({persona.occupation})" for persona in self.project_settings.personas])}
+
+【進行方法】
+1. 議題を紹介し、佐藤さんから順番に意見を求めてください
+2. 各参加者からの意見を聞いた後、簡潔にコメントしてください  
+3. 全員の意見を聞いた後、議論を総括してください
+
+【重要】参加者に質問する時は必ずtransfer_to_agent()を使用してください：
+- 佐藤さんに質問: transfer_to_agent('persona_佐藤_拓也')
+- 田中さんに質問: transfer_to_agent('persona_田中_美咲') 
+- 山田さんに質問: transfer_to_agent('persona_山田_健太')
+
+参加者は自動的に発言を終了し、あなたに制御が戻ります。順次進行してください。
+"""
 
         self.facilitator = LlmAgent(
             name="focus_group_facilitator",
@@ -124,13 +129,13 @@ class FacilitatorAgent:
                 "各参加者から多様で建設的な意見を引き出します。"
             ),
             instruction=instruction,
-            sub_agents=cast("list[BaseAgent]", self.persona_agents),
+            sub_agents=self.persona_agents,  # PersonaAgentをsub_agentsとして登録
         )
 
         logger.debug(
-            "Facilitator LlmAgent created",
+            "Facilitator LlmAgent created with persona sub-agents",
             facilitator_name=self.facilitator.name,
-            sub_agents=persona_names,
+            sub_agents=[agent.name for agent in self.persona_agents],
         )
 
     @property
