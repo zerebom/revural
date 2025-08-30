@@ -1,10 +1,13 @@
 [project]
 name = "hibikasu-agent"
 version = "0.1.0"
-description = "A short description of the project"
+description = "Virtual focus group system using Google ADK for multi-agent discussions"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "google-adk>=1.8.0",
+    "pydantic>=2.0.0",
+    "python-dotenv>=1.0.0",
 ]
 
 [project.optional-dependencies]
@@ -15,6 +18,7 @@ dev = [
     "ruff>=0.4.0",
     "bandit>=1.7.0",
     "pip-audit>=2.6.0",
+    "pre-commit>=3.0.0",
 ]
 
 docs = [
@@ -90,5 +94,9 @@ markers = [
 
 [dependency-groups]
 dev = [
+    "mypy>=1.17.1",
+    "pytest>=8.4.1",
+    "pytest-cov>=6.2.1",
+    "pytest-xdist>=3.8.0",
     "urllib3>=2.5.0",
 ]

@@ -53,7 +53,7 @@ class Config:
     name: str
     max_items: int = 100
     enable_validation: bool = True
-    
+
     def __post_init__(self) -> None:
         if self.max_items <= 0:
             raise ValueError("max_items must be positive")
@@ -75,7 +75,7 @@ def validate_config(config: dict[str, Any]) -> None:
             "Missing required field 'name' in configuration. "
             "Please provide a valid name string."
         )
-    
+
     if not isinstance(config["name"], str):
         raise TypeError(
             f"Expected 'name' to be str, got {type(config['name']).__name__}. "
@@ -107,11 +107,11 @@ class TestExampleConfig:
     def test_正常系_有効な設定で作成できる(self) -> None:
         """有効な設定でインスタンスが作成できることを確認。"""
         config = ExampleConfig(name="test", max_items=10)
-        
+
         assert config.name == "test"
         assert config.max_items == 10
         assert config.enable_validation is True
-    
+
     def test_異常系_不正な値でエラー(self) -> None:
         """不正な値でValueErrorが発生することを確認。"""
         with pytest.raises(ValueError, match="max_items must be positive"):
@@ -126,14 +126,14 @@ def test_統合_設定とプロセッサの連携(tmp_path):
     # 設定ファイル作成
     config_file = tmp_path / "config.json"
     config_file.write_text('{"name": "test", "max_items": 5}')
-    
+
     # 設定読み込み
     config = load_config(config_file)
     processor = DataProcessor(config)
-    
+
     # データ処理
     result = processor.process([{"id": 1, "value": 10}])
-    
+
     assert len(result) == 1
     assert result[0]["processed"] is True
 ```
@@ -156,7 +156,7 @@ def process_large_dataset(data: list[dict]) -> list[dict]:
         for item in data:
             processed = complex_transform(item)
             result.append(processed)
-    
+
     logger.info(f"Processing took {timer.elapsed:.2f} seconds")
     return result
 ```
@@ -179,7 +179,7 @@ def load_config(config_path: Path) -> dict[str, Any]:
             f"Configuration file not found: {config_path}. "
             f"Create one with: touch {config_path}"
         )
-    
+
     try:
         with config_path.open(encoding="utf-8") as f:
             return json.load(f)
@@ -205,12 +205,12 @@ def main(config: str, verbose: bool) -> None:
     """A short description of the project"""
     if verbose:
         setup_logging(level="DEBUG")
-    
+
     if config:
         cfg = load_config(Path(config))
     else:
         cfg = ExampleConfig(name="default")
-    
+
     # メインロジック実行
     result = process_data(cfg)
     click.echo(f"Processed {len(result)} items")
