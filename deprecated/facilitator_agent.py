@@ -32,7 +32,8 @@ def create_persona_llm_agent(
         f"簡潔で自然な日本語で回答し、あなたの専門性と性格を反映した視点を提供してください。"
         f"\n\n【重要】: 発言の流れは以下の通りです："
         f"\n1. 3-4文程度で自分の意見を述べる"
-        f"\n2. 発言を終えた後、必ずtransfer_to_agent('focus_group_facilitator')を呼び出して司会者に制御を戻す"
+        f"\n2. 発言を終えた後、必ずtransfer_to_agent("
+        f"'focus_group_facilitator')を呼び出して司会者に制御を戻す"
         f"\n\nこの手順を必ず実行してください。司会者が議論を継続するために重要です。"
         f"\n他の参加者を直接呼び出すことはありません。必ず司会者に制御を戻してください。"
     )
@@ -106,16 +107,19 @@ class FacilitatorAgent:
 {self.project_settings.topic}
 
 【参加者】
-{chr(10).join([f"- {persona.name} ({persona.occupation})" for persona in self.project_settings.personas])}
+{chr(10).join([
+                    f"- {persona.name} ({persona.occupation})"
+                    for persona in self.project_settings.personas
+                ])}
 
 【進行方法】
 1. 議題を紹介し、佐藤さんから順番に意見を求めてください
-2. 各参加者からの意見を聞いた後、簡潔にコメントしてください  
+2. 各参加者からの意見を聞いた後、簡潔にコメントしてください
 3. 全員の意見を聞いた後、議論を総括してください
 
 【重要】参加者に質問する時は必ずtransfer_to_agent()を使用してください：
 - 佐藤さんに質問: transfer_to_agent('persona_佐藤_拓也')
-- 田中さんに質問: transfer_to_agent('persona_田中_美咲') 
+- 田中さんに質問: transfer_to_agent('persona_田中_美咲')
 - 山田さんに質問: transfer_to_agent('persona_山田_健太')
 
 参加者は自動的に発言を終了し、あなたに制御が戻ります。順次進行してください。
