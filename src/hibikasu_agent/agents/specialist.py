@@ -4,7 +4,9 @@ import tomllib
 from pathlib import Path
 
 from google.adk.agents import LlmAgent
+from pydantic import BaseModel
 
+from hibikasu_agent.schemas import IssuesResponse
 from hibikasu_agent.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -31,161 +33,83 @@ def load_agent_prompts() -> dict[str, dict[str, str]]:
         return {}
 
 
-def create_engineer_agent(model: str = "gemini-2.5-flash") -> LlmAgent:
-    """Create Engineer Specialist Agent.
+def create_specialist(  # noqa: PLR0913
+    *,
+    name: str,
+    description: str,
+    model: str = "gemini-2.5-flash",
+    instruction: str | None = None,
+    system_prompt: str | None = None,
+    task_prompt: str | None = None,
+    output_schema: type[BaseModel] = IssuesResponse,
+    output_key: str | None = None,
+) -> LlmAgent:
+    """Generic factory for creating a specialist ``LlmAgent``.
 
     Args:
-        model: LLM model to use
+        name: Agent unique name.
+        description: Human-readable agent description.
+        model: LLM model to use.
+        instruction: Full instruction text. If provided, used as-is.
+        system_prompt: Optional system prompt. Used if ``instruction`` is not provided.
+        task_prompt: Optional task prompt. Used with ``system_prompt``.
+        output_schema: Pydantic model type for structured output.
 
     Returns:
-        LlmAgent configured as engineer specialist
+        Configured ``LlmAgent`` instance.
     """
-    from pydantic import BaseModel, Field
-
-    # Define output schema for structured response
-    class IssueItem(BaseModel):
-        severity: str = Field(pattern="^(High|Mid|Low)$")
-        comment: str = Field(min_length=1)
-        original_text: str = Field(default="")
-
-    class IssuesResponse(BaseModel):
-        issues: list[IssueItem] = Field(description="List of issues found in the PRD")
-
-    prompts = load_agent_prompts()
-    engineer_config = prompts.get("engineer", {})
-
-    system_prompt = engineer_config.get("system_prompt", "").strip()
-    task_prompt = engineer_config.get("task_prompt", "").strip()
-
-    instruction = f"{system_prompt}\n\n{task_prompt}".strip()
-
-    agent = LlmAgent(
-        name="engineer_specialist",
-        model=model,
-        description="バックエンドエンジニアの専門的観点からPRDをレビュー",
-        instruction=instruction,
-        output_schema=IssuesResponse,  # Structured output
+    # Compose instruction if not explicitly provided
+    final_instruction = (
+        instruction
+        if (instruction and instruction.strip())
+        else f"{(system_prompt or '').strip()}\n\n{(task_prompt or '').strip()}".strip()
     )
 
-    logger.info("Engineer Specialist Agent created", model=model)
+    if not final_instruction:
+        logger.warning("Empty instruction for specialist agent; name=%s", name)
+
+    agent = LlmAgent(
+        name=name,
+        model=model,
+        description=description,
+        instruction=final_instruction,
+        output_schema=output_schema,
+        output_key=output_key,
+    )
+
+    logger.info("Specialist Agent created", name=name, model=model)
     return agent
 
 
-def create_ux_designer_agent(model: str = "gemini-2.5-flash") -> LlmAgent:
-    """Create UX Designer Specialist Agent.
+def create_specialist_from_role(  # noqa: PLR0913
+    role_key: str,
+    *,
+    name: str,
+    description: str,
+    model: str = "gemini-2.5-flash",
+    output_schema: type[BaseModel] = IssuesResponse,
+    output_key: str | None = None,
+) -> LlmAgent:
+    """Create a specialist using prompts loaded by role key.
 
     Args:
-        model: LLM model to use
-
-    Returns:
-        LlmAgent configured as UX designer specialist
+        role_key: Key in TOML under which prompts are stored (e.g., "engineer").
+        name: Agent unique name.
+        description: Agent description.
+        model: LLM model name.
+        output_schema: Structured output schema.
     """
-    from pydantic import BaseModel, Field
-
-    # Define output schema for structured response
-    class IssueItem(BaseModel):
-        severity: str = Field(pattern="^(High|Mid|Low)$")
-        comment: str = Field(min_length=1)
-        original_text: str = Field(default="")
-
-    class IssuesResponse(BaseModel):
-        issues: list[IssueItem] = Field(description="List of issues found in the PRD")
-
     prompts = load_agent_prompts()
-    ux_designer_config = prompts.get("ux_designer", {})
+    role_cfg = prompts.get(role_key, {})
+    system_prompt = role_cfg.get("system_prompt", "").strip()
+    task_prompt = role_cfg.get("task_prompt", "").strip()
 
-    system_prompt = ux_designer_config.get("system_prompt", "").strip()
-    task_prompt = ux_designer_config.get("task_prompt", "").strip()
-
-    instruction = f"{system_prompt}\n\n{task_prompt}".strip()
-
-    agent = LlmAgent(
-        name="ux_designer_specialist",
+    return create_specialist(
+        name=name,
+        description=description,
         model=model,
-        description="UXデザイナーの専門的観点からPRDをレビュー",
-        instruction=instruction,
-        output_schema=IssuesResponse,  # Structured output
+        system_prompt=system_prompt,
+        task_prompt=task_prompt,
+        output_schema=output_schema,
+        output_key=output_key,
     )
-
-    logger.info("UX Designer Specialist Agent created", model=model)
-    return agent
-
-
-def create_qa_tester_agent(model: str = "gemini-2.5-flash") -> LlmAgent:
-    """Create QA Tester Specialist Agent.
-
-    Args:
-        model: LLM model to use
-
-    Returns:
-        LlmAgent configured as QA tester specialist
-    """
-    from pydantic import BaseModel, Field
-
-    # Define output schema for structured response
-    class IssueItem(BaseModel):
-        severity: str = Field(pattern="^(High|Mid|Low)$")
-        comment: str = Field(min_length=1)
-        original_text: str = Field(default="")
-
-    class IssuesResponse(BaseModel):
-        issues: list[IssueItem] = Field(description="List of issues found in the PRD")
-
-    prompts = load_agent_prompts()
-    qa_tester_config = prompts.get("qa_tester", {})
-
-    system_prompt = qa_tester_config.get("system_prompt", "").strip()
-    task_prompt = qa_tester_config.get("task_prompt", "").strip()
-
-    instruction = f"{system_prompt}\n\n{task_prompt}".strip()
-
-    agent = LlmAgent(
-        name="qa_tester_specialist",
-        model=model,
-        description="QAテスターの専門的観点からPRDをレビュー",
-        instruction=instruction,
-        output_schema=IssuesResponse,  # Structured output
-    )
-
-    logger.info("QA Tester Specialist Agent created", model=model)
-    return agent
-
-
-def create_pm_agent(model: str = "gemini-2.5-flash") -> LlmAgent:
-    """Create PM Specialist Agent.
-
-    Args:
-        model: LLM model to use
-
-    Returns:
-        LlmAgent configured as PM specialist
-    """
-    from pydantic import BaseModel, Field
-
-    # Define output schema for structured response
-    class IssueItem(BaseModel):
-        severity: str = Field(pattern="^(High|Mid|Low)$")
-        comment: str = Field(min_length=1)
-        original_text: str = Field(default="")
-
-    class IssuesResponse(BaseModel):
-        issues: list[IssueItem] = Field(description="List of issues found in the PRD")
-
-    prompts = load_agent_prompts()
-    pm_config = prompts.get("pm", {})
-
-    system_prompt = pm_config.get("system_prompt", "").strip()
-    task_prompt = pm_config.get("task_prompt", "").strip()
-
-    instruction = f"{system_prompt}\n\n{task_prompt}".strip()
-
-    agent = LlmAgent(
-        name="pm_specialist",
-        model=model,
-        description="プロダクトマネージャーの専門的観点からPRDをレビュー",
-        instruction=instruction,
-        output_schema=IssuesResponse,  # Structured output
-    )
-
-    logger.info("PM Specialist Agent created", model=model)
-    return agent

@@ -2,12 +2,7 @@
 
 from google.adk.agents import LlmAgent
 
-from hibikasu_agent.agents.specialist import (
-    create_engineer_agent,
-    create_pm_agent,
-    create_qa_tester_agent,
-    create_ux_designer_agent,
-)
+from hibikasu_agent.agents.specialist import create_specialist_from_role
 from hibikasu_agent.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -25,10 +20,30 @@ def create_review_orchestrator_agent(model: str = "gemini-2.5-flash") -> LlmAgen
     logger.info("Creating Review Orchestrator Agent with specialist sub_agents")
 
     # Create specialist agents
-    engineer_agent = create_engineer_agent(model)
-    ux_designer_agent = create_ux_designer_agent(model)
-    qa_tester_agent = create_qa_tester_agent(model)
-    pm_agent = create_pm_agent(model)
+    engineer_agent = create_specialist_from_role(
+        "engineer",
+        name="engineer_specialist",
+        description="バックエンドエンジニアの専門的観点からPRDをレビュー",
+        model=model,
+    )
+    ux_designer_agent = create_specialist_from_role(
+        "ux_designer",
+        name="ux_designer_specialist",
+        description="UXデザイナーの専門的観点からPRDをレビュー",
+        model=model,
+    )
+    qa_tester_agent = create_specialist_from_role(
+        "qa_tester",
+        name="qa_tester_specialist",
+        description="QAテスターの専門的観点からPRDをレビュー",
+        model=model,
+    )
+    pm_agent = create_specialist_from_role(
+        "pm",
+        name="pm_specialist",
+        description="プロダクトマネージャーの専門的観点からPRDをレビュー",
+        model=model,
+    )
 
     instruction = """
 あなたはPRDレビューオーケストレーターです。

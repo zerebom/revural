@@ -1,7 +1,7 @@
 """Basic smoke test to ensure the package can be imported."""
 
 from hibikasu_agent import __version__
-from hibikasu_agent.agents.specialist import create_engineer_agent
+from hibikasu_agent.agents.specialist import create_specialist
 from hibikasu_agent.schemas import Issue, ReviewSession
 from hibikasu_agent.utils.logging_config import get_logger, setup_logging
 
@@ -20,7 +20,7 @@ def test_schemas_import() -> None:
 
 def test_agents_import() -> None:
     """Test that agent modules can be imported."""
-    assert create_engineer_agent is not None
+    assert create_specialist is not None
 
 
 def test_logging_import() -> None:

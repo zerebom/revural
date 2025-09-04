@@ -3,25 +3,10 @@
 from typing import Any
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
-
-from hibikasu_agent.schemas.models import Issue, ReviewSession
+from hibikasu_agent.schemas.models import Issue, ReviewSession, SpecialistIssue
 from hibikasu_agent.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
-
-
-class SpecialistIssue(BaseModel):
-    """Model for individual issue from specialist agent."""
-
-    severity: str = Field(pattern="^(High|Mid|Low|Medium)$")
-    description: str = Field(min_length=1)
-    recommendation: str = Field(default="")
-    category: str = Field(default="")
-
-    def normalize_severity(self) -> str:
-        """Normalize severity values."""
-        return "Mid" if self.severity == "Medium" else self.severity
 
 
 def structure_review_results(
