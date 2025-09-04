@@ -52,22 +52,60 @@ class StructuredLogger:
                 sanitized[k] = v
         return sanitized
 
-    def debug(self, message: str, **kwargs: Any) -> None:
-        """Log debug message with structured data."""
-        self.logger.debug(message, extra=self._sanitize_extra(kwargs))
+    def _split_logging_kwargs(
+        self, kwargs: dict[str, Any]
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        """Split kwargs into logging kwargs and extra kwargs."""
+        if not kwargs:
+            return {}, {}
+        logger_keys = {"exc_info", "stack_info", "stacklevel"}
+        logger_kwargs: dict[str, Any] = {}
+        extra_kwargs: dict[str, Any] = {}
+        for k, v in kwargs.items():
+            if k in logger_keys:
+                logger_kwargs[k] = v
+            else:
+                extra_kwargs[k] = v
+        return logger_kwargs, extra_kwargs
 
-    def info(self, message: str, **kwargs: Any) -> None:
-        """Log info message with structured data."""
-        self.logger.info(message, extra=self._sanitize_extra(kwargs))
+    def debug(self, message: str, *args: Any, **kwargs: Any) -> None:
+        """Log debug message with structured data and printf-style args."""
+        logger_kwargs, extra_kwargs = self._split_logging_kwargs(kwargs)
+        self.logger.debug(
+            message,
+            *args,
+            extra=self._sanitize_extra(extra_kwargs),
+            **logger_kwargs,
+        )
 
-    def warning(self, message: str, **kwargs: Any) -> None:
-        """Log warning message with structured data."""
-        self.logger.warning(message, extra=self._sanitize_extra(kwargs))
+    def info(self, message: str, *args: Any, **kwargs: Any) -> None:
+        """Log info message with structured data and printf-style args."""
+        logger_kwargs, extra_kwargs = self._split_logging_kwargs(kwargs)
+        self.logger.info(
+            message,
+            *args,
+            extra=self._sanitize_extra(extra_kwargs),
+            **logger_kwargs,
+        )
 
-    def error(self, message: str, exc_info: bool = False, **kwargs: Any) -> None:
-        """Log error message with structured data."""
+    def warning(self, message: str, *args: Any, **kwargs: Any) -> None:
+        """Log warning message with structured data and printf-style args."""
+        logger_kwargs, extra_kwargs = self._split_logging_kwargs(kwargs)
+        self.logger.warning(
+            message,
+            *args,
+            extra=self._sanitize_extra(extra_kwargs),
+            **logger_kwargs,
+        )
+
+    def error(self, message: str, *args: Any, **kwargs: Any) -> None:
+        """Log error message with structured data and printf-style args."""
+        logger_kwargs, extra_kwargs = self._split_logging_kwargs(kwargs)
         self.logger.error(
-            message, exc_info=exc_info, extra=self._sanitize_extra(kwargs)
+            message,
+            *args,
+            extra=self._sanitize_extra(extra_kwargs),
+            **logger_kwargs,
         )
 
 
