@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 import toml
+from dotenv import load_dotenv
 from hibikasu_agent.agents.specialist import (
     create_engineer_agent,
     create_pm_agent,
@@ -14,6 +15,9 @@ from hibikasu_agent.agents.specialist import (
     create_ux_designer_agent,
 )
 from hibikasu_agent.utils.logging_config import get_logger, setup_logging
+
+# Load environment variables from .env file
+load_dotenv()
 
 logger = get_logger(__name__)
 
@@ -111,12 +115,52 @@ async def main():
         agent = create_agent_by_name(args.agent, args.model)
         logger.info(f"Created specialist agent: {agent}")
 
-        # Generate review
+        # Generate review using ADK Runner
         logger.info("Starting PRD review...")
-        review_result = agent.generate_issues_from_prd(prd_text)
+        from uuid import uuid4
+
+        from google.adk.runners import InMemoryRunner
+        from google.genai import types
+
+        # Create runner
+        app_name = f"test_specialist_{args.agent}"
+        runner = InMemoryRunner(agent=agent, app_name=app_name)
+
+        # Create session
+        session_id = str(uuid4())
+        user_id = "test_user"
+        await runner.session_service.create_session(
+            app_name=app_name, user_id=user_id, session_id=session_id
+        )
+
+        # Create message with PRD text
+        message = types.Content(parts=[types.Part(text=prd_text)], role="user")
+
+        # Run agent and collect response
+        review_result = ""
+        async for event in runner.run_async(
+            session_id=session_id,
+            user_id=user_id,
+            new_message=message,
+        ):
+            if hasattr(event, "content") and event.content is not None:
+                content = event.content
+                if hasattr(content, "parts") and content.parts:
+                    first_part = content.parts[0]
+                    if hasattr(first_part, "text") and first_part.text is not None:
+                        review_result = first_part.text
 
         # Parse and validate JSON
         try:
+            # Remove markdown code block if present
+            if review_result.startswith("```json"):
+                review_result = review_result[7:]  # Remove ```json
+            if review_result.startswith("```"):
+                review_result = review_result[3:]  # Remove ```
+            if review_result.endswith("```"):
+                review_result = review_result[:-3]  # Remove ```
+            review_result = review_result.strip()
+
             issues = json.loads(review_result)
             logger.info(f"Review completed with {len(issues)} issues")
         except json.JSONDecodeError as e:

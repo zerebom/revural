@@ -1,8 +1,9 @@
 """Tools for the orchestrator agent."""
 
-import json
 from typing import Any
 from uuid import uuid4
+
+from pydantic import BaseModel, Field
 
 from hibikasu_agent.schemas.models import Issue, ReviewSession
 from hibikasu_agent.utils.logging_config import get_logger
@@ -10,76 +11,90 @@ from hibikasu_agent.utils.logging_config import get_logger
 logger = get_logger(__name__)
 
 
+class SpecialistIssue(BaseModel):
+    """Model for individual issue from specialist agent."""
+
+    severity: str = Field(pattern="^(High|Mid|Low|Medium)$")
+    description: str = Field(min_length=1)
+    recommendation: str = Field(default="")
+    category: str = Field(default="")
+
+    def normalize_severity(self) -> str:
+        """Normalize severity values."""
+        return "Mid" if self.severity == "Medium" else self.severity
+
+
 def structure_review_results(
     prd_text: str,
-    engineer_review: str,
-    ux_designer_review: str,
-    qa_tester_review: str,
-    pm_review: str,
+    engineer_issues: list[dict],
+    ux_designer_issues: list[dict],
+    qa_tester_issues: list[dict],
+    pm_issues: list[dict],
 ) -> dict[str, Any]:
-    """Structure review results from all specialists into a unified format.
+    """Structure review results from specialist agents into unified format.
 
-    This tool takes the raw review outputs from each specialist agent and
-    structures them into a ReviewSession model with prioritized issues.
+    This version handles structured data directly from sub_agents
+    instead of JSON strings.
 
     Args:
         prd_text: The full PRD text being reviewed
-        engineer_review: JSON string from engineer specialist
-        ux_designer_review: JSON string from UX designer specialist
-        qa_tester_review: JSON string from QA tester specialist
-        pm_review: JSON string from PM specialist
+        engineer_issues: List of issue dicts from engineer specialist
+        ux_designer_issues: List of issue dicts from UX designer specialist
+        qa_tester_issues: List of issue dicts from QA tester specialist
+        pm_issues: List of issue dicts from PM specialist
 
     Returns:
         Dictionary representation of ReviewSession with all structured issues
     """
-    logger.info("Starting to structure review results")
+    logger.info("Starting to structure review results from structured data")
 
     all_issues: list[Issue] = []
 
-    # Map agent names to their reviews
-    agent_reviews = {
-        "engineer": engineer_review,
-        "ux_designer": ux_designer_review,
-        "qa_tester": qa_tester_review,
-        "pm": pm_review,
+    # Map agent names to their structured issues
+    agent_issues = {
+        "engineer": engineer_issues,
+        "ux_designer": ux_designer_issues,
+        "qa_tester": qa_tester_issues,
+        "pm": pm_issues,
     }
 
-    # Parse each specialist's review and create Issue objects
-    for agent_name, review_json in agent_reviews.items():
+    # Process each specialist's structured issues
+    for agent_name, issues_data in agent_issues.items():
         try:
-            # Parse the JSON response
-            review_data = json.loads(review_json)
-
-            # Extract issues from the review
-            # Assuming each specialist returns an array of issues
-            if isinstance(review_data, list):
-                issues = review_data
-            elif isinstance(review_data, dict) and "issues" in review_data:
-                issues = review_data["issues"]
-            else:
+            # issues_data should already be a list of dicts
+            if not isinstance(issues_data, list):
                 logger.warning(
-                    f"Unexpected format from {agent_name}: {type(review_data)}"
+                    f"Expected list from {agent_name}, got {type(issues_data)}"
                 )
                 continue
 
-            # Create Issue objects
-            for _, issue_data in enumerate(issues):
-                issue = Issue(
-                    issue_id=str(uuid4()),
-                    priority=0,  # Will be set later based on severity
-                    agent_name=agent_name,
-                    agent_avatar=f"{agent_name}_icon",  # Simple avatar identifier
-                    severity=issue_data.get("severity", "Mid"),
-                    comment=issue_data.get("comment", ""),
-                    original_text=issue_data.get("original_text", ""),
-                )
-                all_issues.append(issue)
+            # Use Pydantic to validate and parse each issue
+            for issue_data in issues_data:
+                try:
+                    # Validate with Pydantic model
+                    specialist_issue = SpecialistIssue(**issue_data)
 
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse JSON from {agent_name}: {e}")
-            continue
+                    # Create Issue object from validated data
+                    issue = Issue(
+                        issue_id=str(uuid4()),
+                        priority=0,  # Will be set later based on severity
+                        agent_name=agent_name,
+                        agent_avatar=f"{agent_name}_icon",
+                        severity=specialist_issue.normalize_severity(),
+                        comment=specialist_issue.description,
+                        original_text=specialist_issue.recommendation,
+                    )
+                    all_issues.append(issue)
+
+                except Exception as e:
+                    logger.warning(
+                        f"Invalid issue format from {agent_name}: {e}. "
+                        f"Data: {issue_data}"
+                    )
+                    continue
+
         except Exception as e:
-            logger.error(f"Error processing {agent_name} review: {e}")
+            logger.error(f"Error processing {agent_name} issues: {e}")
             continue
 
     # Calculate priorities based on severity
@@ -96,11 +111,11 @@ def structure_review_results(
     # Create ReviewSession
     review_session = ReviewSession(
         prd_text=prd_text,
-        panel_type="Webサービス",  # Default panel type
+        panel_type="Webサービス",
         final_issues=all_issues,
     )
 
-    # Return as dictionary (not JSON string)
+    # Return as dictionary
     result = review_session.model_dump()
     logger.info(f"Created ReviewSession with ID: {result['review_id']}")
 

@@ -82,8 +82,10 @@ python tests/scripts/run_discussion.py --topic "新商品のアイデア"
 
 ### 開発コマンド
 ```bash
-make test      # テスト実行
-make lint      # リンターチェック
-make format    # コードフォーマット
-make typecheck # 型チェック
+make test                              # テスト実行
+make lint                              # リンターチェック
+make format                            # コードフォーマット
+make typecheck                         # 型チェック
+uv run pre-commit run --all-files      # pre-commitチェック（全ファイル）
+uv run pre-commit run                  # pre-commitチェック（変更ファイルのみ）
 ```
