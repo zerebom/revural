@@ -4,6 +4,32 @@ import logging
 import sys
 from typing import Any
 
+_RESERVED_LOGRECORD_KEYS = {
+    # Core LogRecord attributes that cannot be overwritten via `extra`
+    "name",
+    "msg",
+    "message",
+    "levelname",
+    "levelno",
+    "pathname",
+    "filename",
+    "module",
+    "exc_info",
+    "exc_text",
+    "stack_info",
+    "lineno",
+    "funcName",
+    "created",
+    "msecs",
+    "relativeCreated",
+    "thread",
+    "threadName",
+    "processName",
+    "process",
+    "args",
+    "asctime",
+}
+
 
 class StructuredLogger:
     """A wrapper around Python's logging.Logger that supports structured logging."""
@@ -11,21 +37,76 @@ class StructuredLogger:
     def __init__(self, logger: logging.Logger):
         self.logger = logger
 
-    def debug(self, message: str, **kwargs: Any) -> None:
-        """Log debug message with structured data."""
-        self.logger.debug(message, extra=kwargs)
+    def _sanitize_extra(self, extra: dict[str, Any]) -> dict[str, Any]:
+        """Remove/rename keys that would overwrite LogRecord attributes.
 
-    def info(self, message: str, **kwargs: Any) -> None:
-        """Log info message with structured data."""
-        self.logger.info(message, extra=kwargs)
+        Conflicting keys are prefixed with "extra_" to avoid KeyError.
+        """
+        if not extra:
+            return {}
+        sanitized: dict[str, Any] = {}
+        for k, v in extra.items():
+            if k in _RESERVED_LOGRECORD_KEYS:
+                sanitized[f"extra_{k}"] = v
+            else:
+                sanitized[k] = v
+        return sanitized
 
-    def warning(self, message: str, **kwargs: Any) -> None:
-        """Log warning message with structured data."""
-        self.logger.warning(message, extra=kwargs)
+    def _split_logging_kwargs(
+        self, kwargs: dict[str, Any]
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        """Split kwargs into logging kwargs and extra kwargs."""
+        if not kwargs:
+            return {}, {}
+        logger_keys = {"exc_info", "stack_info", "stacklevel"}
+        logger_kwargs: dict[str, Any] = {}
+        extra_kwargs: dict[str, Any] = {}
+        for k, v in kwargs.items():
+            if k in logger_keys:
+                logger_kwargs[k] = v
+            else:
+                extra_kwargs[k] = v
+        return logger_kwargs, extra_kwargs
 
-    def error(self, message: str, exc_info: bool = False, **kwargs: Any) -> None:
-        """Log error message with structured data."""
-        self.logger.error(message, exc_info=exc_info, extra=kwargs)
+    def debug(self, message: str, *args: Any, **kwargs: Any) -> None:
+        """Log debug message with structured data and printf-style args."""
+        logger_kwargs, extra_kwargs = self._split_logging_kwargs(kwargs)
+        self.logger.debug(
+            message,
+            *args,
+            extra=self._sanitize_extra(extra_kwargs),
+            **logger_kwargs,
+        )
+
+    def info(self, message: str, *args: Any, **kwargs: Any) -> None:
+        """Log info message with structured data and printf-style args."""
+        logger_kwargs, extra_kwargs = self._split_logging_kwargs(kwargs)
+        self.logger.info(
+            message,
+            *args,
+            extra=self._sanitize_extra(extra_kwargs),
+            **logger_kwargs,
+        )
+
+    def warning(self, message: str, *args: Any, **kwargs: Any) -> None:
+        """Log warning message with structured data and printf-style args."""
+        logger_kwargs, extra_kwargs = self._split_logging_kwargs(kwargs)
+        self.logger.warning(
+            message,
+            *args,
+            extra=self._sanitize_extra(extra_kwargs),
+            **logger_kwargs,
+        )
+
+    def error(self, message: str, *args: Any, **kwargs: Any) -> None:
+        """Log error message with structured data and printf-style args."""
+        logger_kwargs, extra_kwargs = self._split_logging_kwargs(kwargs)
+        self.logger.error(
+            message,
+            *args,
+            extra=self._sanitize_extra(extra_kwargs),
+            **logger_kwargs,
+        )
 
 
 def get_logger(name: str) -> StructuredLogger:

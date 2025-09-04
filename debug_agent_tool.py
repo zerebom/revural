@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from google.adk.runners import InMemoryRunner
 from google.genai import types
 
-from src.hibikasu_agent.agents.specialist import create_engineer_agent
+from src.hibikasu_agent.agents.specialist import create_specialist_from_role
 
 # Load environment variables
 load_dotenv()
@@ -18,7 +18,11 @@ async def test_agent_tool_output():
     """Test what AgentTool returns when agent has output_schema."""
 
     # Create engineer agent with output_schema
-    agent = create_engineer_agent()
+    agent = create_specialist_from_role(
+        "engineer",
+        name="engineer_specialist",
+        description="バックエンドエンジニアの専門的観点からPRDをレビュー",
+    )
 
     # Create runner
     app_name = "debug_test"
