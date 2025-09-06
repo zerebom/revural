@@ -62,19 +62,39 @@ def create_specialist(  # noqa: PLR0913
     if not final_instruction:
         logger.warning(f"Empty instruction for specialist agent; name={name}")
 
-    # Build kwargs to avoid specifying output_schema/output_key when not desired
-    llm_kwargs: dict[str, object] = dict(
-        name=name,
-        model=model,
-        description=description,
-        instruction=final_instruction,
-    )
-    if output_schema is not None:
-        llm_kwargs["output_schema"] = output_schema
-    if output_key is not None:
-        llm_kwargs["output_key"] = output_key
-
-    agent = LlmAgent(**llm_kwargs)
+    # Call with explicit arguments to satisfy static typing (no **kwargs dict)
+    if output_schema is not None and output_key is not None:
+        agent = LlmAgent(
+            name=name,
+            model=model,
+            description=description,
+            instruction=final_instruction,
+            output_schema=output_schema,
+            output_key=output_key,
+        )
+    elif output_schema is not None:
+        agent = LlmAgent(
+            name=name,
+            model=model,
+            description=description,
+            instruction=final_instruction,
+            output_schema=output_schema,
+        )
+    elif output_key is not None:
+        agent = LlmAgent(
+            name=name,
+            model=model,
+            description=description,
+            instruction=final_instruction,
+            output_key=output_key,
+        )
+    else:
+        agent = LlmAgent(
+            name=name,
+            model=model,
+            description=description,
+            instruction=final_instruction,
+        )
 
     logger.info("Specialist Agent created", name=name, model=model)
     return agent

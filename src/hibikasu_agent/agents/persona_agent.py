@@ -1,6 +1,6 @@
 """Persona Agent implementation using Google ADK."""
 
-from typing import Any, cast
+from typing import Any
 from uuid import uuid4
 
 from google.adk.agents import LlmAgent
@@ -170,7 +170,7 @@ class PersonaAgent:
                     # Extract text from the first part
                     first_part = content.parts[0]
                     if hasattr(first_part, "text") and first_part.text is not None:
-                        return cast(str, first_part.text)
+                        return str(first_part.text)
 
         # If no proper content found, return string representation
         return str(events[-1] if events else "No response")
