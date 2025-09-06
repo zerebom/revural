@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import time
 import uuid
-from typing import Any
+from typing import Any, cast
 
-from app.schemas import Issue
+from .schemas import Issue
 
 # In-memory store for Week1 mock implementation
 reviews_in_memory: dict[str, dict[str, Any]] = {}
@@ -73,7 +73,8 @@ def find_issue(review_id: str, issue_id: str) -> Issue | None:
     session = reviews_in_memory.get(review_id)
     if not session or not session.get("issues"):
         return None
-    for issue in session["issues"]:
+    issues: list[Issue] = cast(list[Issue], session["issues"])  # runtime is pydantic models
+    for issue in issues:
         if issue.issue_id == issue_id:
             return issue
     return None

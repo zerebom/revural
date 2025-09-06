@@ -1,6 +1,5 @@
 from fastapi.testclient import TestClient
-
-from app.main import app
+from hibikasu_agent.api.main import app
 
 client = TestClient(app)
 

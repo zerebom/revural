@@ -227,7 +227,7 @@ clean:
 
 # FastAPI dev server
 dev-api:
-	uv run uvicorn app.main:app --reload --port $${API_PORT:-8000}
+	uv run uvicorn hibikasu_agent.api.main:app --reload --port $${API_PORT:-8000}
 
 # Codex config install
 codex-config:

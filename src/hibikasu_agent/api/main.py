@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import os
+from typing import Any
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.schemas import (
+from .schemas import (
     ApplySuggestionResponse,
     DialogRequest,
     DialogResponse,
@@ -14,7 +15,7 @@ from app.schemas import (
     StatusResponse,
     SuggestResponse,
 )
-from app.services import (
+from .services import (
     find_issue,
     get_review_session,
     new_review_session,
@@ -35,7 +36,8 @@ def _allowed_origins_from_env() -> list[str]:
     ]
 
 
-app = FastAPI(title="Hibikasu PRD Reviewer API (Mock)", version="0.1.0-mock")
+# Annotate as Any to avoid mypy "untyped decorator" on FastAPI routes
+app: Any = FastAPI(title="Hibikasu PRD Reviewer API (Mock)", version="0.1.0-mock")
 
 app.add_middleware(
     CORSMiddleware,
@@ -46,23 +48,17 @@ app.add_middleware(
 )
 
 
-@app.post("/reviews", response_model=ReviewResponse)
 async def start_review(req: ReviewRequest) -> ReviewResponse:
     review_id = new_review_session(req.prd_text, req.panel_type)
     return ReviewResponse(review_id=review_id)
 
 
-@app.get("/reviews/{review_id}", response_model=StatusResponse)
 async def get_review(review_id: str) -> StatusResponse:
     data = get_review_session(review_id)
     # Pydantic model coercion for Any -> Issue list
     return StatusResponse.model_validate(data)
 
 
-@app.post(
-    "/reviews/{review_id}/issues/{issue_id}/dialog",
-    response_model=DialogResponse,
-)
 async def issue_dialog(review_id: str, issue_id: str, req: DialogRequest) -> DialogResponse:
     issue = find_issue(review_id, issue_id)
     if issue is None:
@@ -76,16 +72,13 @@ async def issue_dialog(review_id: str, issue_id: str, req: DialogRequest) -> Dia
     return DialogResponse(
         response_text=(
             "ご質問ありがとうございます。"
+            f"（ご質問:『{req.question_text}』）"
             f"『{issue.original_text}』に関しては、バルク保存や"
             "制限値の設定を検討すると良いでしょう。"
         )
     )
 
 
-@app.post(
-    "/reviews/{review_id}/issues/{issue_id}/suggest",
-    response_model=SuggestResponse,
-)
 async def issue_suggest(review_id: str, issue_id: str) -> SuggestResponse:
     issue = find_issue(review_id, issue_id)
     target_text = issue.original_text if issue else "(対象テキスト未取得)"
@@ -96,13 +89,34 @@ async def issue_suggest(review_id: str, issue_id: str) -> SuggestResponse:
     return SuggestResponse(suggested_text=suggested, target_text=target_text)
 
 
-@app.post(
-    "/reviews/{review_id}/issues/{issue_id}/apply_suggestion",
-    response_model=ApplySuggestionResponse,
-)
 async def issue_apply_suggestion(review_id: str, issue_id: str) -> ApplySuggestionResponse:
     # For mock, we simply return success without mutating PRD text
+    # mark as intentionally unused for linters
+    _ = issue_id
     if review_id not in reviews_in_memory:
         # still succeed to keep FE flow simple
         return ApplySuggestionResponse(status="success")
     return ApplySuggestionResponse(status="success")
+
+
+# Route registration (avoid untyped decorator warnings in mypy strict)
+app.add_api_route("/reviews", start_review, methods=["POST"], response_model=ReviewResponse)
+app.add_api_route("/reviews/{review_id}", get_review, methods=["GET"], response_model=StatusResponse)
+app.add_api_route(
+    "/reviews/{review_id}/issues/{issue_id}/dialog",
+    issue_dialog,
+    methods=["POST"],
+    response_model=DialogResponse,
+)
+app.add_api_route(
+    "/reviews/{review_id}/issues/{issue_id}/suggest",
+    issue_suggest,
+    methods=["POST"],
+    response_model=SuggestResponse,
+)
+app.add_api_route(
+    "/reviews/{review_id}/issues/{issue_id}/apply_suggestion",
+    issue_apply_suggestion,
+    methods=["POST"],
+    response_model=ApplySuggestionResponse,
+)
