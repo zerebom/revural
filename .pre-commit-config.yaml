@@ -24,6 +24,7 @@ repos:
     hooks:
       - id: bandit
         args: ["-r", "src/"]
+        files: ^src/
 
   # Vulnerability scanner for Python dependencies
   - repo: https://github.com/pypa/pip-audit
@@ -36,4 +37,12 @@ repos:
     rev: v1.11.2
     hooks:
       - id: mypy
-        args: ["--strict", "--show-error-codes", "--pretty", "src/"]
+        pass_filenames: false
+        args: [
+          "--strict",
+          "--show-error-codes",
+          "--pretty",
+          "--explicit-package-bases",
+          "-p",
+          "hibikasu_agent"
+        ]

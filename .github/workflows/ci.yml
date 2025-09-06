@@ -69,7 +69,7 @@ jobs:
       run: uv sync --all-extras --group dev
 
     - name: Run mypy
-      run: uv run mypy src/ --strict --show-error-codes --pretty
+      run: uv run mypy -p hibikasu_agent --strict --show-error-codes --pretty --explicit-package-bases
 
   test:
     name: Test Python ${{ matrix.python-version }} on ${{ matrix.os }}

@@ -104,3 +104,10 @@ dev = [
     "pytest-xdist>=3.8.0",
     "urllib3>=2.5.0",
 ]
+
+[tool.mypy]
+python_version = "3.12"
+mypy_path = ["src"]
+explicit_package_bases = true
+enable_incomplete_feature = ["NewGenericSyntax"]
+ignore_missing_imports = true

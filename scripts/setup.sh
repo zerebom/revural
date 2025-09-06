@@ -213,7 +213,7 @@ setup_python() {
 
     # Install dependencies
     print_step "Installing dependencies..."
-    uv sync --all-extras
+    uv sync --all-extras --group dev
     print_success "Dependencies installed"
 }
 
