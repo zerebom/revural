@@ -5,6 +5,7 @@ help:
 	@echo "Usage: make [target]"
 	@echo ""
 	@echo "Available targets:"
+	@echo "  dev-api      - FastAPIをローカル起動 (uvicorn)"
 	@echo "  setup        - セットアップ（依存関係インストール、pre-commit設定）"
 	@echo "  sync         - 全依存関係を同期"
 	@echo "  test         - 全テスト実行（単体・プロパティ・統合）"
@@ -222,3 +223,7 @@ clean:
 	find . -type d -name ".ruff_cache" -exec rm -rf {} +
 	find . -type d -name "htmlcov" -exec rm -rf {} +
 	find . -type f -name ".coverage" -delete
+
+# FastAPI dev server
+dev-api:
+	uv run uvicorn app.main:app --reload --port $${API_PORT:-8000}

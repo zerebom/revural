@@ -78,6 +78,35 @@ adk web src/hibikasu_agent/main.py
 python tests/scripts/run_specialist_review.py --debug
 ```
 
+### FastAPI モックAPI (Week1)
+
+Next.js などのフロントエンドから呼び出すためのモックAPIを用意しています。
+
+```bash
+# サーバー起動（デフォルト: http://localhost:8000）
+make dev-api
+
+# CORSを許可するオリジンを変更する場合
+echo "CORS_ALLOW_ORIGINS=http://localhost:3000" >> .env
+
+# 動作確認
+curl -X POST http://localhost:8000/reviews \
+  -H 'Content-Type: application/json' \
+  -d '{"prd_text":"ダッシュボードの表示項目を..."}'
+# => {"review_id":"<uuid>"}
+
+curl http://localhost:8000/reviews/<uuid>
+# 初回: {"status":"processing","issues":null}
+# 2回目以降: {"status":"completed","issues":[...]}
+```
+
+提供エンドポイント（モック）
+- `POST /reviews` → `{"review_id": string}` を即返却
+- `GET /reviews/{review_id}` → `processing`→`completed`に遷移してダミーの`issues`を返却
+- `POST /reviews/{review_id}/issues/{issue_id}/dialog` → `{"response_text": string}`
+- `POST /reviews/{review_id}/issues/{issue_id}/suggest` → `{"suggested_text": string, "target_text": string}`
+- `POST /reviews/{review_id}/issues/{issue_id}/apply_suggestion` → `{"status":"success"}`
+
 ### コマンドラインオプション
 
 - `--prd`: レビュー対象のPRDファイルパス
@@ -122,6 +151,10 @@ make typecheck
 # フォーマット
 make format
 ```
+
+テストは t-wada さんのTDDのエッセンス（振る舞いを小さく赤→緑→リファクタ）に合わせ、
+APIの外部契約（I/O）を最小ユニットで検証する形にしています。まずモックでコントラクトを固定し、
+内部実装（AI結合）はWeek2で差し替えてもテストが壊れないようにしています。
 
 ## 開発ロードマップ
 
