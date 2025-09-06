@@ -81,9 +81,7 @@ def create_persona_prompt(
     if moderator_input:
         prompt_parts.append(f"\n【司会者からの追加質問】\n{moderator_input}")
 
-    prompt_parts.append(
-        f"\n上記の議論履歴を踏まえて、「{persona.name}」として意見を述べてください。"
-    )
+    prompt_parts.append(f"\n上記の議論履歴を踏まえて、「{persona.name}」として意見を述べてください。")
 
     return "\n".join(prompt_parts)
 

@@ -52,9 +52,7 @@ class StructuredLogger:
                 sanitized[k] = v
         return sanitized
 
-    def _split_logging_kwargs(
-        self, kwargs: dict[str, Any]
-    ) -> tuple[dict[str, Any], dict[str, Any]]:
+    def _split_logging_kwargs(self, kwargs: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
         """Split kwargs into logging kwargs and extra kwargs."""
         if not kwargs:
             return {}, {}
@@ -141,15 +139,12 @@ def setup_logging(level: str = "INFO", format_type: str = "console") -> None:
     # Define format based on type
     if format_type == "json":
         formatter = logging.Formatter(
-            '{"timestamp": "%(asctime)s", "level": "%(levelname)s", '
-            '"logger": "%(name)s", "message": "%(message)s"}'
+            '{"timestamp": "%(asctime)s", "level": "%(levelname)s", ' '"logger": "%(name)s", "message": "%(message)s"}'
         )
     elif format_type == "plain":
         formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
     else:  # console (default)
-        formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        )
+        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
     # Configure root logger
     root_logger = logging.getLogger()

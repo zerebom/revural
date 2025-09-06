@@ -106,16 +106,12 @@ async def run_review(agent, prd_text: str, agent_name: str) -> tuple[str, dict]:
 
     session_id = str(uuid4())
     user_id = "test_user"
-    await runner.session_service.create_session(
-        app_name=app_name, user_id=user_id, session_id=session_id
-    )
+    await runner.session_service.create_session(app_name=app_name, user_id=user_id, session_id=session_id)
 
     message = types.Content(parts=[types.Part(text=prd_text)], role="user")
 
     review_result = ""
-    async for event in runner.run_async(
-        session_id=session_id, user_id=user_id, new_message=message
-    ):
+    async for event in runner.run_async(session_id=session_id, user_id=user_id, new_message=message):
         if hasattr(event, "content") and event.content is not None:
             content = event.content
             if hasattr(content, "parts") and content.parts:

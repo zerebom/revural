@@ -39,10 +39,7 @@ class PersonaAgent:
             name=f"persona_{persona.name.replace(' ', '_')}",
             model=model,
             description=f"AI persona: {persona.name} - {persona.occupation}",
-            instruction=(
-                f"You are {persona.name}, a {persona.age}-year-old "
-                f"{persona.occupation}."
-            ),
+            instruction=(f"You are {persona.name}, a {persona.age}-year-old " f"{persona.occupation}."),
         )
 
         # Create runner once and reuse it
@@ -124,9 +121,7 @@ class PersonaAgent:
             has_moderator_input=bool(moderator_input),
         )
 
-        prompt = create_persona_prompt(
-            self.persona, topic, discussion_history, moderator_input
-        )
+        prompt = create_persona_prompt(self.persona, topic, discussion_history, moderator_input)
 
         # Use the shared runner instance
         session_id = str(uuid4())

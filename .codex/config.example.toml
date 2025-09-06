@@ -1,0 +1,35 @@
+#############################################
+# Codex CLI project config (example)
+# Copy to ~/.codex/config.toml via `make codex-config`
+#############################################
+
+# Base defaults (safe, minimal friction)
+model = "gpt-5"
+approval_policy = "on-failure"    # dev: switch to "never" if完全に自己責任でOK
+sandbox_mode = "workspace-write"
+
+[sandbox_workspace_write]
+# Enable outbound network (package install, git push, etc.)
+network_access = true
+
+# Optional: add extra writable roots if needed
+# writable_roots = []
+
+#############################################
+# Profiles
+#############################################
+
+[profiles.dev]
+approval_policy = "never"
+sandbox_mode = "workspace-write"
+
+[profiles.team]
+approval_policy = "on-failure"
+sandbox_mode = "workspace-write"
+
+#############################################
+# Mark this repo as trusted (filled by install script)
+# Example (will be injected):
+# [projects."/absolute/path/to/hibikasu-agent"]
+# trust_level = "trusted"
+#############################################

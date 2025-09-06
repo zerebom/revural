@@ -8,9 +8,11 @@ from .models import (
     Issue,
     IssueItem,
     IssuesResponse,
+    Persona,
     ReviewSession,
     SpecialistIssue,
     SuggestionResponse,
+    Utterance,
 )
 
 __all__ = [
@@ -21,7 +23,9 @@ __all__ = [
     "Issue",
     "IssueItem",
     "IssuesResponse",
+    "Persona",
     "ReviewSession",
     "SpecialistIssue",
     "SuggestionResponse",
+    "Utterance",
 ]

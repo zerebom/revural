@@ -47,9 +47,7 @@ def chunk_list(items: list[Any], chunk_size: int) -> list[list[Any]]:
     return chunks
 
 
-def flatten_dict(
-    nested_dict: dict[str, Any], separator: str = ".", prefix: str = ""
-) -> dict[str, Any]:
+def flatten_dict(nested_dict: dict[str, Any], separator: str = ".", prefix: str = "") -> dict[str, Any]:
     """Flatten a nested dictionary.
 
     Parameters

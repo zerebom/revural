@@ -80,9 +80,7 @@ class ExampleClass:
         if filter_key is None:
             return self._items.copy()
 
-        filtered = [
-            item for item in self._items if item.get(filter_key) == filter_value
-        ]
+        filtered = [item for item in self._items if item.get(filter_key) == filter_value]
         logger.debug(
             "Items filtered",
             original_count=len(self._items),
@@ -97,10 +95,7 @@ class ExampleClass:
 
     def __repr__(self) -> str:
         """Return string representation."""
-        return (
-            f"ExampleClass(name='{self.config.name}', "
-            f"items={len(self._items)}/{self.config.max_items})"
-        )
+        return f"ExampleClass(name='{self.config.name}', " f"items={len(self._items)}/{self.config.max_items})"
 
 
 def process_data(

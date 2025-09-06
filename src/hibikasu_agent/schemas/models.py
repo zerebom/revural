@@ -35,9 +35,7 @@ class FinalIssue(BaseModel):
 class FinalIssuesResponse(BaseModel):
     """Wrapper for returning a list of final issues."""
 
-    final_issues: list[FinalIssue] = Field(
-        description="Aggregated and prioritized issues"
-    )
+    final_issues: list[FinalIssue] = Field(description="Aggregated and prioritized issues")
 
 
 # Shared output schema across specialist agents
@@ -108,3 +106,22 @@ class ApplyResponse(BaseModel):
 
     status: str = Field(description="Application status (success/error)")
     message: str | None = Field(default=None, description="Optional status message")
+
+
+# ====== Minimal models for PersonaAgent typing ======
+
+
+class Persona(BaseModel):
+    """Minimal persona profile used by PersonaAgent."""
+
+    name: str
+    age: int
+    occupation: str
+
+
+class Utterance(BaseModel):
+    """Conversation utterance used in PersonaAgent history."""
+
+    speaker: str
+    content: str
+    timestamp: str | None = None
