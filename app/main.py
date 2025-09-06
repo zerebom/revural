@@ -76,6 +76,7 @@ async def issue_dialog(review_id: str, issue_id: str, req: DialogRequest) -> Dia
     return DialogResponse(
         response_text=(
             "ご質問ありがとうございます。"
+            f"（ご質問:『{req.question_text}』）"
             f"『{issue.original_text}』に関しては、バルク保存や"
             "制限値の設定を検討すると良いでしょう。"
         )
@@ -100,7 +101,7 @@ async def issue_suggest(review_id: str, issue_id: str) -> SuggestResponse:
     "/reviews/{review_id}/issues/{issue_id}/apply_suggestion",
     response_model=ApplySuggestionResponse,
 )
-async def issue_apply_suggestion(review_id: str, issue_id: str) -> ApplySuggestionResponse:
+async def issue_apply_suggestion(review_id: str, _issue_id: str) -> ApplySuggestionResponse:
     # For mock, we simply return success without mutating PRD text
     if review_id not in reviews_in_memory:
         # still succeed to keep FE flow simple
