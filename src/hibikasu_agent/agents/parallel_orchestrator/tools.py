@@ -86,5 +86,5 @@ def aggregate_final_issues(
         item.priority = idx
 
     resp = FinalIssuesResponse(final_issues=final_items)
-    logger.info("Created %d final issues", len(final_items))
+    logger.info(f"Created {len(final_items)} final issues")
     return resp.model_dump()
