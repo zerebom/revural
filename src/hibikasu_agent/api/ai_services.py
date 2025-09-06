@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import time
 import uuid
 from typing import TYPE_CHECKING, Any, cast
@@ -75,3 +76,22 @@ def find_issue(review_id: str, issue_id: str) -> Issue | None:
         if issue.issue_id == issue_id:
             return issue
     return None
+
+
+def _configure_from_env() -> None:
+    """Optionally load orchestrator-backed impl based on env vars.
+
+    Set HIBIKASU_AI_REVIEW_IMPL=orchestrator to enable. Falls back silently
+    if dependencies are missing.
+    """
+    if os.getenv("HIBIKASU_AI_REVIEW_IMPL", "").strip().lower() == "orchestrator":
+        try:
+            from hibikasu_agent.api.ai_orchestrator_bridge import load_review_impl
+
+            set_review_impl(load_review_impl())
+        except Exception as _err:
+            # Keep default implementation; optional dependency not available
+            _ = _err
+
+
+_configure_from_env()

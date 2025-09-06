@@ -40,7 +40,7 @@ def _allowed_origins_from_env() -> list[str]:
     ]
 
 
-# Annotate as Any to avoid mypy "untyped decorator" on FastAPI routes
+# Use add_api_route to avoid mypy decorator issues
 app: Any = FastAPI(title="Hibikasu PRD Reviewer API (Mock)", version="0.1.0-mock")
 
 app.add_middleware(
@@ -69,8 +69,7 @@ async def issue_dialog(review_id: str, issue_id: str, req: DialogRequest) -> Dia
         # still return mocked text even if not found, to keep FE unblocked
         return DialogResponse(
             response_text=(
-                "該当する論点が見つかりませんでしたが、一般的な観点としては、"
-                "処理の分割やバルク処理の検討が有効です。"
+                "該当する論点が見つかりませんでしたが、一般的な観点としては、処理の分割やバルク処理の検討が有効です。"
             )
         )
     return DialogResponse(
