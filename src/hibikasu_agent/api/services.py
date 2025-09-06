@@ -4,7 +4,7 @@ import time
 import uuid
 from typing import Any, cast
 
-from .schemas import Issue
+from hibikasu_agent.api.schemas import Issue
 
 # In-memory store for Week1 mock implementation
 reviews_in_memory: dict[str, dict[str, Any]] = {}
