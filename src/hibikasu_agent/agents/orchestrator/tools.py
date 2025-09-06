@@ -3,10 +3,9 @@
 from typing import Any
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
-
 from hibikasu_agent.schemas.models import Issue, ReviewSession
 from hibikasu_agent.utils.logging_config import get_logger
+from pydantic import BaseModel, Field
 
 logger = get_logger(__name__)
 
