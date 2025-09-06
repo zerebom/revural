@@ -31,9 +31,7 @@ async def test_agent_tool_output():
     # Create session
     session_id = str(uuid4())
     user_id = "test_user"
-    await runner.session_service.create_session(
-        app_name=app_name, user_id=user_id, session_id=session_id
-    )
+    await runner.session_service.create_session(app_name=app_name, user_id=user_id, session_id=session_id)
 
     # Test message
     test_prd = "テスト用PRD: ユーザー登録機能を作る"

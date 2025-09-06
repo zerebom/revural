@@ -111,3 +111,4 @@ mypy_path = ["src"]
 explicit_package_bases = true
 enable_incomplete_feature = ["NewGenericSyntax"]
 ignore_missing_imports = true
+disallow_subclassing_any = false

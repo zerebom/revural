@@ -18,9 +18,7 @@ def load_agent_prompts() -> dict[str, dict[str, str]]:
     Returns:
         Dictionary mapping agent names to their prompts
     """
-    prompts_path = (
-        Path(__file__).parent.parent.parent.parent / "prompts" / "agents.toml"
-    )
+    prompts_path = Path(__file__).parent.parent.parent.parent / "prompts" / "agents.toml"
 
     try:
         with prompts_path.open("rb") as f:

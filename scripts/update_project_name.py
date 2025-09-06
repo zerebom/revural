@@ -99,9 +99,7 @@ def rename_directory(old_name: str, new_name: str) -> bool:
 
 def main() -> None:
     """Main function."""
-    parser = argparse.ArgumentParser(
-        description="Update project name throughout the template"
-    )
+    parser = argparse.ArgumentParser(description="Update project name throughout the template")
     parser.add_argument(
         "new_name",
         help="New project name (lowercase, underscores allowed)",

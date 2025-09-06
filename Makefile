@@ -8,6 +8,7 @@ help:
 	@echo "  dev-api      - FastAPIをローカル起動 (uvicorn)"
 	@echo "  setup        - セットアップ（依存関係インストール、pre-commit設定）"
 	@echo "  sync         - 全依存関係を同期"
+	@echo "  codex-config - Codexのローカル設定をインストール(信頼設定含む)"
 	@echo "  test         - 全テスト実行（単体・プロパティ・統合）"
 	@echo "  test-cov     - カバレッジ付きテスト実行"
 	@echo "  test-unit    - 単体テストのみ実行"
@@ -227,3 +228,7 @@ clean:
 # FastAPI dev server
 dev-api:
 	uv run uvicorn app.main:app --reload --port $${API_PORT:-8000}
+
+# Codex config install
+codex-config:
+	chmod +x scripts/install_codex_config.sh && ./scripts/install_codex_config.sh

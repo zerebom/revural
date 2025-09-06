@@ -25,10 +25,10 @@ class SpecialistIssue(BaseModel):
 
 def structure_review_results(
     prd_text: str,
-    engineer_issues: list[dict],
-    ux_designer_issues: list[dict],
-    qa_tester_issues: list[dict],
-    pm_issues: list[dict],
+    engineer_issues: list[dict[str, Any]],
+    ux_designer_issues: list[dict[str, Any]],
+    qa_tester_issues: list[dict[str, Any]],
+    pm_issues: list[dict[str, Any]],
 ) -> dict[str, Any]:
     """Structure review results from specialist agents into unified format.
 
@@ -50,7 +50,7 @@ def structure_review_results(
     all_issues: list[Issue] = []
 
     # Map agent names to their structured issues
-    agent_issues = {
+    agent_issues: dict[str, list[dict[str, Any]]] = {
         "engineer": engineer_issues,
         "ux_designer": ux_designer_issues,
         "qa_tester": qa_tester_issues,
@@ -62,9 +62,7 @@ def structure_review_results(
         try:
             # issues_data should already be a list of dicts
             if not isinstance(issues_data, list):
-                logger.warning(
-                    f"Expected list from {agent_name}, got {type(issues_data)}"
-                )
+                logger.warning(f"Expected list from {agent_name}, got {type(issues_data)}")
                 continue
 
             # Use Pydantic to validate and parse each issue
@@ -86,10 +84,7 @@ def structure_review_results(
                     all_issues.append(issue)
 
                 except Exception as e:
-                    logger.warning(
-                        f"Invalid issue format from {agent_name}: {e}. "
-                        f"Data: {issue_data}"
-                    )
+                    logger.warning(f"Invalid issue format from {agent_name}: {e}. " f"Data: {issue_data}")
                     continue
 
         except Exception as e:
@@ -115,7 +110,7 @@ def structure_review_results(
     )
 
     # Return as dictionary
-    result = review_session.model_dump()
+    result: dict[str, Any] = review_session.model_dump()
     logger.info(f"Created ReviewSession with ID: {result['review_id']}")
 
     return result

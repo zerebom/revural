@@ -1,6 +1,6 @@
 """Tools for the Parallel Orchestrator workflow."""
 
-from typing import Any
+from typing import Any, cast
 from uuid import uuid4
 
 from hibikasu_agent.schemas.models import FinalIssue, FinalIssuesResponse, IssueItem
@@ -9,7 +9,7 @@ from hibikasu_agent.utils.logging_config import get_logger
 logger = get_logger(__name__)
 
 
-def _extract_list(value: Any) -> list[dict]:
+def _extract_list(value: Any) -> list[dict[str, Any]]:
     """Extract list[dict] of issues from various possible shapes.
 
     Accepts:
@@ -22,14 +22,14 @@ def _extract_list(value: Any) -> list[dict]:
         return []
     # Already a list of dicts
     if isinstance(value, list):
-        return value
+        return cast(list[dict[str, Any]], value)
     # Pydantic model or object with attribute
     issues_attr = getattr(value, "issues", None)
     if issues_attr is not None:
-        return issues_attr if isinstance(issues_attr, list) else []
+        return cast(list[dict[str, Any]], issues_attr) if isinstance(issues_attr, list) else []
     # Dict with key
     if isinstance(value, dict) and isinstance(value.get("issues"), list):
-        return value["issues"]
+        return cast(list[dict[str, Any]], value["issues"])
     return []
 
 
@@ -39,14 +39,14 @@ def aggregate_final_issues(
     ux_designer_issues: Any,
     qa_tester_issues: Any,
     pm_issues: Any,
-) -> dict:
+) -> dict[str, Any]:
     """Aggregate specialist issues and return prioritized FinalIssuesResponse.
 
     Returns a dict compatible with FinalIssuesResponse.model_dump().
     """
     logger.info("Aggregating specialist issues into FinalIssue list")
 
-    issues_by_agent: dict[str, list[dict]] = {
+    issues_by_agent: dict[str, list[dict[str, Any]]] = {
         "engineer": _extract_list(engineer_issues),
         "ux_designer": _extract_list(ux_designer_issues),
         "qa_tester": _extract_list(qa_tester_issues),
@@ -87,4 +87,5 @@ def aggregate_final_issues(
 
     resp = FinalIssuesResponse(final_issues=final_items)
     logger.info(f"Created {len(final_items)} final issues")
-    return resp.model_dump()
+    result: dict[str, Any] = resp.model_dump()
+    return result

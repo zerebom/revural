@@ -11,10 +11,10 @@ from hibikasu_agent.agents.parallel_orchestrator.tools import (
     aggregate_final_issues,
 )
 from hibikasu_agent.agents.specialist import (
-    IssuesResponse,
     create_role_agents,
     create_specialist_from_role,
 )
+from hibikasu_agent.schemas import IssuesResponse
 from hibikasu_agent.schemas.models import FinalIssuesResponse
 
 
@@ -76,9 +76,7 @@ def create_parallel_review_agent(model: str = "gemini-2.5-flash") -> SequentialA
     merger = LlmAgent(
         name="IssueAggregatorMerger",
         model=model,
-        description=(
-            "Aggregates parallel specialist outputs into a prioritized final list."
-        ),
+        description=("Aggregates parallel specialist outputs into a prioritized final list."),
         instruction=(
             "あなたはレビュー統合責任者です。\n"
             "提供された4人の専門家のレビュー結果を、必ずaggregate_final_issuesツールを使って統合してください。\n\n"
@@ -98,9 +96,7 @@ def create_parallel_review_agent(model: str = "gemini-2.5-flash") -> SequentialA
     pipeline = SequentialAgent(
         name="ParallelReviewAndAggregatePipeline",
         sub_agents=[parallel, merger],
-        description=(
-            "Coordinates parallel specialist review and deterministic aggregation."
-        ),
+        description=("Coordinates parallel specialist review and deterministic aggregation."),
     )
 
     return pipeline
@@ -135,9 +131,7 @@ def create_coordinator_agent(model: str = "gemini-2.5-flash") -> LlmAgent:
         review_output_key="qa_tester_issues",
         name_prefix="qa_tester",
     )
-    _, pm_chat = create_role_agents(
-        "pm", model=model, review_output_key="pm_issues", name_prefix="pm"
-    )
+    _, pm_chat = create_role_agents("pm", model=model, review_output_key="pm_issues", name_prefix="pm")
 
     coordinator = LlmAgent(
         name="Coordinator",

@@ -85,9 +85,7 @@ class MiniFacilitator:
         for _i, agent in enumerate(self.persona_agents):
             logger.debug(f"Getting initial utterance from {agent.persona.name}")
 
-            utterance_content = await agent.generate_initial_utterance(
-                self.project_settings.topic
-            )
+            utterance_content = await agent.generate_initial_utterance(self.project_settings.topic)
 
             utterance = Utterance(
                 persona_name=agent.persona.name,
@@ -108,10 +106,7 @@ class MiniFacilitator:
 
             for agent in self.persona_agents:
                 # Skip if this persona just spoke
-                if (
-                    self.discussion_log
-                    and self.discussion_log[-1].persona_name == agent.persona.name
-                ):
+                if self.discussion_log and self.discussion_log[-1].persona_name == agent.persona.name:
                     continue
 
                 logger.debug(f"Getting response from {agent.persona.name}")
@@ -204,9 +199,7 @@ def create_sample_personas() -> list[Persona]:
 
 async def main():
     """Main function."""
-    parser = argparse.ArgumentParser(
-        description="Run a test discussion with Persona Agents"
-    )
+    parser = argparse.ArgumentParser(description="Run a test discussion with Persona Agents")
     parser.add_argument(
         "--topic",
         type=str,

@@ -107,6 +107,23 @@ curl http://localhost:8000/reviews/<uuid>
 - `POST /reviews/{review_id}/issues/{issue_id}/suggest` → `{"suggested_text": string, "target_text": string}`
 - `POST /reviews/{review_id}/issues/{issue_id}/apply_suggestion` → `{"status":"success"}`
 
+### Codex CLI 設定（任意だが便利）
+
+このレポジトリに、開発用の Codex 設定テンプレートを同梱しています。ローカルへ反映するには:
+
+```bash
+# ~/.codex/config.toml を作成/バックアップしつつ、
+# 現在のレポジトリを trusted として追記します。
+make codex-config
+
+# 以後の推奨起動例（承認ダイアログを最小化）
+codex --profile dev
+```
+
+メモ:
+- デフォルトは `workspace-write` サンドボックスでネットワーク許可をON。
+- `profiles.dev` は `approval_policy = "never"`（完全自己責任）。チーム運用では `profiles.team`（`on-failure`）を推奨。
+
 ### コマンドラインオプション
 
 - `--prd`: レビュー対象のPRDファイルパス
