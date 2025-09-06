@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import os
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:  # imported only for typing
+    from types import ModuleType
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .schemas import (
+from hibikasu_agent.api import ai_services, config
+from hibikasu_agent.api import services as mock_services
+from hibikasu_agent.api.schemas import (
     ApplySuggestionResponse,
     DialogRequest,
     DialogResponse,
@@ -15,12 +20,11 @@ from .schemas import (
     StatusResponse,
     SuggestResponse,
 )
-from .services import (
-    find_issue,
-    get_review_session,
-    new_review_session,
-    reviews_in_memory,
-)
+
+
+def _svc() -> ModuleType:
+    """Select service module by mode each call (mock/ai)."""
+    return ai_services if config.is_ai_mode() else mock_services
 
 
 def _allowed_origins_from_env() -> list[str]:
@@ -49,18 +53,18 @@ app.add_middleware(
 
 
 async def start_review(req: ReviewRequest) -> ReviewResponse:
-    review_id = new_review_session(req.prd_text, req.panel_type)
+    review_id = _svc().new_review_session(req.prd_text, req.panel_type)
     return ReviewResponse(review_id=review_id)
 
 
 async def get_review(review_id: str) -> StatusResponse:
-    data = get_review_session(review_id)
+    data = _svc().get_review_session(review_id)
     # Pydantic model coercion for Any -> Issue list
     return StatusResponse.model_validate(data)
 
 
 async def issue_dialog(review_id: str, issue_id: str, req: DialogRequest) -> DialogResponse:
-    issue = find_issue(review_id, issue_id)
+    issue = _svc().find_issue(review_id, issue_id)
     if issue is None:
         # still return mocked text even if not found, to keep FE unblocked
         return DialogResponse(
@@ -80,7 +84,7 @@ async def issue_dialog(review_id: str, issue_id: str, req: DialogRequest) -> Dia
 
 
 async def issue_suggest(review_id: str, issue_id: str) -> SuggestResponse:
-    issue = find_issue(review_id, issue_id)
+    issue = _svc().find_issue(review_id, issue_id)
     target_text = issue.original_text if issue else "(対象テキスト未取得)"
     suggested = (
         "PRDの要件に以下を追記することを推奨します。"
@@ -93,7 +97,7 @@ async def issue_apply_suggestion(review_id: str, issue_id: str) -> ApplySuggesti
     # For mock, we simply return success without mutating PRD text
     # mark as intentionally unused for linters
     _ = issue_id
-    if review_id not in reviews_in_memory:
+    if review_id not in _svc().reviews_in_memory:
         # still succeed to keep FE flow simple
         return ApplySuggestionResponse(status="success")
     return ApplySuggestionResponse(status="success")
