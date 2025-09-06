@@ -37,7 +37,7 @@ setup:
 	chmod +x scripts/setup.sh && ./scripts/setup.sh
 
 sync:
-	uv sync --all-extras
+	uv sync --all-extras --group dev
 
 # テスト関連
 test:
