@@ -41,7 +41,7 @@ def create_specialist(  # noqa: PLR0913
     instruction: str | None = None,
     system_prompt: str | None = None,
     task_prompt: str | None = None,
-    output_schema: type[BaseModel] = IssuesResponse,
+    output_schema: type[BaseModel] | None = IssuesResponse,
     output_key: str | None = None,
 ) -> LlmAgent:
     """Generic factory for creating a specialist ``LlmAgent``.
@@ -58,24 +58,25 @@ def create_specialist(  # noqa: PLR0913
     Returns:
         Configured ``LlmAgent`` instance.
     """
-    # Compose instruction if not explicitly provided
-    final_instruction = (
-        instruction
-        if (instruction and instruction.strip())
-        else f"{(system_prompt or '').strip()}\n\n{(task_prompt or '').strip()}".strip()
-    )
+    # Use single instruction string (legacy system/task prompts are ignored)
+    final_instruction = (instruction or "").strip()
 
     if not final_instruction:
-        logger.warning("Empty instruction for specialist agent; name=%s", name)
+        logger.warning(f"Empty instruction for specialist agent; name={name}")
 
-    agent = LlmAgent(
+    # Build kwargs to avoid specifying output_schema/output_key when not desired
+    llm_kwargs: dict[str, object] = dict(
         name=name,
         model=model,
         description=description,
         instruction=final_instruction,
-        output_schema=output_schema,
-        output_key=output_key,
     )
+    if output_schema is not None:
+        llm_kwargs["output_schema"] = output_schema
+    if output_key is not None:
+        llm_kwargs["output_key"] = output_key
+
+    agent = LlmAgent(**llm_kwargs)
 
     logger.info("Specialist Agent created", name=name, model=model)
     return agent
@@ -87,7 +88,8 @@ def create_specialist_from_role(  # noqa: PLR0913
     name: str,
     description: str,
     model: str = "gemini-2.5-flash",
-    output_schema: type[BaseModel] = IssuesResponse,
+    purpose: str = "review",  # "review" or "chat"
+    output_schema: type[BaseModel] | None = IssuesResponse,
     output_key: str | None = None,
 ) -> LlmAgent:
     """Create a specialist using prompts loaded by role key.
@@ -101,15 +103,63 @@ def create_specialist_from_role(  # noqa: PLR0913
     """
     prompts = load_agent_prompts()
     role_cfg = prompts.get(role_key, {})
-    system_prompt = role_cfg.get("system_prompt", "").strip()
-    task_prompt = role_cfg.get("task_prompt", "").strip()
+
+    # Purpose-specific single instruction keys (no legacy fallbacks)
+    if purpose == "chat":
+        instr = (role_cfg.get("instruction_chat") or "").strip()
+        # For chat, avoid output_schema/output_key to keep transfer unrestricted
+        return create_specialist(
+            name=name,
+            description=description,
+            model=model,
+            instruction=instr,
+            output_schema=None,
+            output_key=None,
+        )
+
+    # review (default)
+    instr = (role_cfg.get("instruction_review") or "").strip()
+
+    # Ensure review uses IssuesResponse schema by default
+    output_schema = output_schema or IssuesResponse
 
     return create_specialist(
         name=name,
         description=description,
         model=model,
-        system_prompt=system_prompt,
-        task_prompt=task_prompt,
+        instruction=instr,
         output_schema=output_schema,
         output_key=output_key,
     )
+
+
+def create_role_agents(
+    role_key: str,
+    *,
+    model: str = "gemini-2.5-flash",
+    review_output_key: str,
+    name_prefix: str | None = None,
+) -> tuple[LlmAgent, LlmAgent]:
+    """Create both review and chat agents for a given role.
+
+    Returns:
+        (review_agent, chat_agent)
+    """
+    prefix = name_prefix or role_key
+    review_agent = create_specialist_from_role(
+        role_key,
+        name=f"{prefix}_specialist",
+        description=f"{role_key} の専門的観点からPRDをレビュー",
+        model=model,
+        purpose="review",
+        output_schema=IssuesResponse,
+        output_key=review_output_key,
+    )
+    chat_agent = create_specialist_from_role(
+        role_key,
+        name=f"{prefix}_chat",
+        description=f"{role_key} の専門的観点でユーザーの質問に回答",
+        model=model,
+        purpose="chat",
+    )
+    return review_agent, chat_agent
