@@ -39,7 +39,7 @@ class PersonaAgent:
             name=f"persona_{persona.name.replace(' ', '_')}",
             model=model,
             description=f"AI persona: {persona.name} - {persona.occupation}",
-            instruction=(f"You are {persona.name}, a {persona.age}-year-old " f"{persona.occupation}."),
+            instruction=(f"You are {persona.name}, a {persona.age}-year-old {persona.occupation}."),
         )
 
         # Create runner once and reuse it
@@ -204,7 +204,5 @@ class PersonaAgent:
     def __repr__(self) -> str:
         """Return string representation."""
         return (
-            f"PersonaAgent(name='{self.persona.name}', "
-            f"age={self.persona.age}, "
-            f"occupation='{self.persona.occupation}')"
+            f"PersonaAgent(name='{self.persona.name}', age={self.persona.age}, occupation='{self.persona.occupation}')"
         )

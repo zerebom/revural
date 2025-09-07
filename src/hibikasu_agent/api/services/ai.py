@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-import os
 import time
 import uuid
-from typing import TYPE_CHECKING, Any, cast
-
-if TYPE_CHECKING:  # typing-only import
-    from collections.abc import Callable
+from collections.abc import Callable
+from typing import Any, cast
 
 from hibikasu_agent.api.schemas import Issue
 
@@ -53,45 +50,47 @@ def get_review_session(review_id: str) -> dict[str, Any]:
     if not data:
         return {"status": "not_found", "issues": None}
 
-    # simple state machine: first poll stays processing, afterwards finalize
+    # simple state machine:
+    # - first poll: always report processing for deterministic UX
+    # - compute is performed by BackgroundTasks via kickoff_compute()
+    # - subsequent polls: return current state (completed when issues are ready)
     data["polls"] = int(data.get("polls", 0)) + 1
-    if data["issues"] is None and data["polls"] <= 1:
+    if data["polls"] <= 1:
         return {"status": "processing", "issues": None}
 
-    if data["issues"] is None:
-        impl = _review_impl_holder[0] or _default_review_impl
-        issues = impl(str(data.get("prd_text", "")))
-        data["issues"] = issues
-        data["status"] = "completed"
-
-    return {"status": data["status"], "issues": data["issues"]}
+    return {"status": data.get("status", "processing"), "issues": data.get("issues")}
 
 
 def find_issue(review_id: str, issue_id: str) -> Issue | None:
     session = reviews_in_memory.get(review_id)
     if not session or not session.get("issues"):
         return None
-    issues: list[Issue] = cast(list[Issue], session["issues"])  # populated by get_review_session
+    issues: list[Issue] = cast("list[Issue]", session["issues"])  # populated by get_review_session
     for issue in issues:
         if issue.issue_id == issue_id:
             return issue
     return None
 
 
-def _configure_from_env() -> None:
-    """Optionally load orchestrator-backed impl based on env vars.
+def kickoff_compute(review_id: str) -> None:
+    """Compute issues for a review_id synchronously.
 
-    Set HIBIKASU_AI_REVIEW_IMPL=orchestrator to enable. Falls back silently
-    if dependencies are missing.
+    Intended to be scheduled via FastAPI BackgroundTasks to avoid blocking requests.
     """
-    if os.getenv("HIBIKASU_AI_REVIEW_IMPL", "").strip().lower() == "orchestrator":
-        try:
-            from hibikasu_agent.api.ai_orchestrator_bridge import load_review_impl
+    data = reviews_in_memory.get(review_id)
+    if not data:
+        return
+    if data.get("issues") is not None:
+        return
+    try:
+        impl = _review_impl_holder[0] or _default_review_impl
+        issues = impl(str(data.get("prd_text", "")))
+        data["issues"] = issues
+        data["status"] = "completed"
+    except Exception as _err:
+        # Mark as failed so polling doesn't spin forever; caller can inspect logs
+        data["status"] = "failed"
+        data["error"] = str(_err)
 
-            set_review_impl(load_review_impl())
-        except Exception as _err:
-            # Keep default implementation; optional dependency not available
-            _ = _err
 
-
-_configure_from_env()
+# Orchestrator-backed impl is injected from api.main lifespan only if needed.

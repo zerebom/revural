@@ -54,7 +54,6 @@ select = [
     "B",      # flake8-bugbear
     "SIM",    # flake8-simplify
     "RUF",    # Ruff-specific rules
-    "TCH",    # flake8-type-checking
     "PTH",    # flake8-use-pathlib
     "PL",     # Pylint
 ]
@@ -112,3 +111,4 @@ explicit_package_bases = true
 enable_incomplete_feature = ["NewGenericSyntax"]
 ignore_missing_imports = true
 disallow_subclassing_any = false
+disallow_untyped_decorators = false

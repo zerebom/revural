@@ -229,6 +229,15 @@ clean:
 dev-api:
 	uv run uvicorn hibikasu_agent.api.main:app --reload --port $${API_PORT:-8000}
 
+# Start API in AI orchestrator mode (requires ADK dependencies and credentials)
+dev-api-ai:
+	HIBIKASU_API_MODE=ai HIBIKASU_AI_REVIEW_IMPL=orchestrator \
+		uv run uvicorn hibikasu_agent.api.main:app --reload --port $${API_PORT:-8000}
+
+# Run a local end-to-end API exercise against a running server
+try-api:
+	uv run python scripts/try_api.py --base-url $${API_BASE:-http://localhost:8000}
+
 # Codex config install
 codex-config:
 	chmod +x scripts/install_codex_config.sh && ./scripts/install_codex_config.sh

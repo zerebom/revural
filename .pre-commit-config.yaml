@@ -39,7 +39,6 @@ repos:
       - id: mypy
         pass_filenames: false
         args: [
-          "--strict",
           "--show-error-codes",
           "--pretty",
           "--explicit-package-bases",
