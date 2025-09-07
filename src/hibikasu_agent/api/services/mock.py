@@ -73,7 +73,7 @@ def find_issue(review_id: str, issue_id: str) -> Issue | None:
     session = reviews_in_memory.get(review_id)
     if not session or not session.get("issues"):
         return None
-    issues: list[Issue] = cast(list[Issue], session["issues"])  # pydantic models at runtime
+    issues: list[Issue] = cast("list[Issue]", session["issues"])  # pydantic models at runtime
     for issue in issues:
         if issue.issue_id == issue_id:
             return issue

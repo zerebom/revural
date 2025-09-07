@@ -22,14 +22,14 @@ def _extract_list(value: Any) -> list[dict[str, Any]]:
         return []
     # Already a list of dicts
     if isinstance(value, list):
-        return cast(list[dict[str, Any]], value)
+        return cast("list[dict[str, Any]]", value)
     # Pydantic model or object with attribute
     issues_attr = getattr(value, "issues", None)
     if issues_attr is not None:
-        return cast(list[dict[str, Any]], issues_attr) if isinstance(issues_attr, list) else []
+        return cast("list[dict[str, Any]]", issues_attr) if isinstance(issues_attr, list) else []
     # Dict with key
     if isinstance(value, dict) and isinstance(value.get("issues"), list):
-        return cast(list[dict[str, Any]], value["issues"])
+        return cast("list[dict[str, Any]]", value["issues"])
     return []
 
 

@@ -102,14 +102,7 @@ class FacilitatorAgent:
 {self.project_settings.topic}
 
 【参加者】
-{
-            chr(10).join(
-                [
-                    f"- {persona.name} ({persona.occupation})"
-                    for persona in self.project_settings.personas
-                ]
-            )
-        }
+{chr(10).join([f"- {persona.name} ({persona.occupation})" for persona in self.project_settings.personas])}
 
 【進行方法】
 1. 議題を紹介し、佐藤さんから順番に意見を求めてください

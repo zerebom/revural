@@ -139,7 +139,7 @@ def setup_logging(level: str = "INFO", format_type: str = "console") -> None:
     # Define format based on type
     if format_type == "json":
         formatter = logging.Formatter(
-            '{"timestamp": "%(asctime)s", "level": "%(levelname)s", ' '"logger": "%(name)s", "message": "%(message)s"}'
+            '{"timestamp": "%(asctime)s", "level": "%(levelname)s", "logger": "%(name)s", "message": "%(message)s"}'
         )
     elif format_type == "plain":
         formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")

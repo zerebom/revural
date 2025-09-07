@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Protocol
-
-if TYPE_CHECKING:
-    from hibikasu_agent.api.schemas import Issue
+from typing import Any, Protocol
 
 
 class ReviewService(Protocol):
@@ -16,4 +13,4 @@ class ReviewService(Protocol):
 
     def get_review_session(self, review_id: str) -> dict[str, Any]: ...
 
-    def find_issue(self, review_id: str, issue_id: str) -> Issue | None: ...
+    def find_issue(self, review_id: str, issue_id: str) -> Any | None: ...

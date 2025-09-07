@@ -84,7 +84,7 @@ def structure_review_results(
                     all_issues.append(issue)
 
                 except Exception as e:
-                    logger.warning(f"Invalid issue format from {agent_name}: {e}. " f"Data: {issue_data}")
+                    logger.warning(f"Invalid issue format from {agent_name}: {e}. Data: {issue_data}")
                     continue
 
         except Exception as e:

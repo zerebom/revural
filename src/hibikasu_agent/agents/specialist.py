@@ -4,9 +4,9 @@ import tomllib
 from pathlib import Path
 
 from google.adk.agents import LlmAgent
-from pydantic import BaseModel
 
 from hibikasu_agent.schemas import IssuesResponse
+from hibikasu_agent.schemas.models import BaseModel
 from hibikasu_agent.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
