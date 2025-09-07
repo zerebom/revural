@@ -7,7 +7,7 @@ submodule file.
 
 from __future__ import annotations
 
-from .services import ai as ai_services
+from hibikasu_agent.services import runtime as ai_services
 
 __all__ = [
     "ai_services",

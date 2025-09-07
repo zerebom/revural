@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 
 from hibikasu_agent.api.schemas import (
     ApplySuggestionResponse,
@@ -14,6 +14,7 @@ from hibikasu_agent.api.schemas import (
     SuggestResponse,
 )
 from hibikasu_agent.api.services import get_service
+from hibikasu_agent.services.providers.adk import answer_dialog as adk_answer_dialog
 
 router = APIRouter()
 
@@ -39,19 +40,9 @@ async def get_review(review_id: str) -> StatusResponse:
 async def issue_dialog(review_id: str, issue_id: str, req: DialogRequest) -> DialogResponse:
     issue = get_service().find_issue(review_id, issue_id)
     if issue is None:
-        return DialogResponse(
-            response_text=(
-                "該当する論点が見つかりませんでしたが、一般的な観点としては、処理の分割やバルク処理の検討が有効です。"
-            )
-        )
-    return DialogResponse(
-        response_text=(
-            "ご質問ありがとうございます。"
-            f"（ご質問:『{req.question_text}』）"
-            f"『{issue.original_text}』に関しては、バルク保存や"
-            "制限値の設定を検討すると良いでしょう。"
-        )
-    )
+        raise HTTPException(status_code=404, detail="Issue not found")
+    text = await adk_answer_dialog(review_id, issue_id, req.question_text)
+    return DialogResponse(response_text=text)
 
 
 @router.post("/reviews/{review_id}/issues/{issue_id}/suggest", response_model=SuggestResponse)

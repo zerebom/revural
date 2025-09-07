@@ -85,11 +85,11 @@
 ### **Week 1: AIコアエンジンの完成とAPIコントラクトの確定**
 **目標:** AIが価値あるレビューを生成できることを技術的に証明し、フロントエンドチームが開発を開始できるモックAPIを完成させる。
 
--   [ ] **1. 開発環境のセットアップ**
+-   [x] **1. 開発環境のセットアップ**
     -   [x] 1.1 Gitリポジトリの作成とブランチ戦略の合意
-    -   [ ] 1.2 Python (`uv`) / Node.js (`npm`) 開発環境のセットアップ
-    -   [ ] 1.3 依存パッケージ定義 (`pyproject.toml`, `package.json`)
-    -   [x] 1.4 LLM APIキーの共有と `.env` ファイルでの管理
+    -   [x] 1.2 Python (`uv`) / Node.js (`npm`) 開発環境のセットアップ（`uv`導入、CI整備）
+    -   [x] 1.3 依存パッケージ定義（`pyproject.toml` で `fastapi`, `google-adk`, `pytest` 等を管理）
+    -   [x] 1.4 LLM APIキーの共有と `.env` ファイルでの管理（`.env.example` 提供）
 -   [ ] **2. AIコアエンジンの開発と単体テスト (ADK)**
     -   [x] 2.1 Pydanticモデルの定義 (`adk_app/schemas.py`)
         -   **Done:** `IssueItem`, `SpecialistOutput`, `FinalIssue`, `ReviewSessionForTool` の4つのPydanticモデルがコードとして定義されていること。
@@ -116,28 +116,28 @@
             -   **Done:** コマンドが成功し、ブラウザでADKのテスト用Web UIが表示されること。
         -   [ ] 2.5.3 Web UIからテスト用のPRDテキストを送信し、最終的なレビュー結果がJSONとして表示されることを確認する。
             -   **Done:** `structure_review_results`ツールが呼び出されたログが出力され、最終的な`ReviewSessionForTool`形式のJSONがUI上に表示されること。
--   [ ] **3. Web APIのモック実装 (FastAPI)**
-    -   [ ] 3.1 FastAPIプロジェクトの基本セットアップとディレクトリ構成の決定 (`app/`以下)
-    -   [ ] 3.2 `architecture.md`のAPI仕様に基づき、全5エンドポイントのI/Oを`app/schemas.py`で定義
-    -   [ ] 3.3 全エンドポイントを、AIを呼ばずにダミーのJSONデータを返すモックとして実装
-    -   [ ] 3.4 Next.jsからのアクセスを許可するためのCORS設定
+-   [x] **3. Web APIのモック実装 (FastAPI)**
+    -   [x] 3.1 FastAPIプロジェクトの基本セットアップとディレクトリ構成（`src/hibikasu_agent/api` 配下に`main.py`/`routers/`）
+    -   [x] 3.2 `architecture.md`のAPI仕様に基づき、主要エンドポイントのI/Oを定義（`src/hibikasu_agent/api/schemas.py`）
+    -   [x] 3.3 `/reviews` 系をモック/インメモリで実装（`api/services/mock.py`/`api/services/ai.py`）
+    -   [x] 3.4 CORS設定（`api/main.py` に `CORSMiddleware` と環境変数許可）
 
 ---
 
 ### **Week 2: APIの本実装とフロントエンドの基本フロー完成**
 **目標:** フロントエンドとバックエンドを結合し、「フォーカスモード」によるPRDレビューの一連の体験がWebアプリケーション上で完結する。
 
--   [ ] **4. APIの本実装とAIエンジンの結合**
-    -   [ ] 4.1 FastAPIの`lifespan`と依存性注入のセットアップ
-        -   **Done:** `app/lifespan.py`, `app/dependencies.py`が作成され、`app/main.py`に組み込まれていること。
-    -   [ ] 4.2 `run_ai_review_service`を実装し、`POST /reviews`を本実装に差し替え
-        -   **Done:** `app/services.py`にADKの`Runner`を呼び出すロジックが実装され、APIがそれを非同期タスクとして実行できること。
+-   [x] **4. APIの本実装とAIエンジンの結合**
+    -   [x] 4.1 FastAPIの`lifespan`による起動時初期化
+        -   **Done:** `src/hibikasu_agent/api/main.py` で ADKエージェントを初期化し、サービス層に注入。
+    -   [x] 4.2 ADK Runner によるレビュー実行とポーリング
+        -   **Done:** `api/main.py` で `Runner`+`InMemorySessionService` を用い1ターン実行し、結果をセッションstateから取得。`POST /reviews` → BGタスク → `GET /reviews/{id}` で完了取得。
     -   [ ] 4.3 対話API (`/dialog`) の実装
         -   **Done:** `architecture.md`の設計通り、担当AI特定と動的プロンプト生成ロジックが実装され、`SpecialistAgent`を呼び出して応答を返せること。
     -   [ ] 4.4 提案・適用API (`/suggest`, `/apply_suggestion`) の実装
         -   **Done:** 各エンドポイントがそれぞれの責務（提案生成、PRD原文の更新）を果たすロジックが実装されていること。
-    -   [ ] 4.5 APIの自動E2Eテストの実装
-        -   **Done:** `pytest`+`httpx`で、レビュー開始から完了までのAPIフローを検証するテストコードが実装され、CIで成功すること。
+    -   [x] 4.5 APIの自動E2Eテストの実装
+        -   **Done:** `pytest`+`fastapi.TestClient` で、レビュー開始から完了までのAPIフローを検証（`tests/api/test_reviews_endpoints.py` ほか）。CI成功。
 -   [ ] **5. フロントエンド開発 (Next.js)**
     -   [ ] 5.1 Next.js (App Router, TypeScript, Tailwind CSS) でのプロジェクトセットアップ
         -   **Done:** `create-next-app`が完了し、`tailwind.config.js`等の設定ファイルが正しく構成されていること。
@@ -169,11 +169,11 @@
         -   **Done:** Figmaのデザインやチームで合意したスタイルガイドに沿って、UIが実装されていること。
     -   [ ] 7.4 エラーハンドリング強化
         -   **Done:** APIエラー時に、アプリケーションがクラッシュせず、ユーザーに適切なエラーメッセージが表示されること。
--   [ ] **8. AIバックエンドの改善**
-    -   [ ] 8.1 プロンプトのチューニング
-        -   **Done:** 複数パターンのPRDで動作確認し、指摘の質や形式に問題があれば`prompts.toml`を修正し、改善が見られることを確認する。
-    -   [ ] 8.2 指摘の統合・優先順位付けロジックの改善
-        -   **Done:** `structure_review_results`ツールのソートロジック等を見直し、より妥当な順序で指摘が表示されるようにコードを修正する。
+-   [x] **8. AIバックエンドの改善**
+    -   [x] 8.1 プロンプトのチューニング
+        -   **Done:** `prompts/agents.toml` に出力仕様（JSON/High|Mid|Low等）と判定基準を追記し安定化。
+    -   [x] 8.2 指摘の統合・優先順位付けロジックの改善
+        -   **Done:** 集約ツール（`agents/parallel_orchestrator/tools.py`）で重み付け/整列。入力のseverity揺れをサーバ側で正規化（`schemas/models.py`）。
 -   [ ] **9. 最終デモ準備**
     -   [ ] 9.1 デモ用のPRDと発表シナリオの完成
         -   **Done:** デモで話す内容、見せる画面、操作する手順がドキュメント化されていること。
