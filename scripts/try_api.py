@@ -53,6 +53,24 @@ def main():
                 print("✨ Final Issues:")
                 # 結果を綺麗に表示
                 print(json.dumps(data, indent=2, ensure_ascii=False))
+
+                # --- 3. POST /dialog on the first issue ---
+                issues = data.get("issues") or []
+                if issues:
+                    first_issue = issues[0]
+                    issue_id = first_issue.get("issue_id")
+                    q = "この論点の背景と対策の優先度を簡潔に教えてください"
+                    print("\n🗣️  3. Asking dialog about the first issue...")
+                    dj = requests.post(
+                        f"{BASE_URL}/reviews/{review_id}/issues/{issue_id}/dialog",
+                        headers=headers,
+                        data=json.dumps({"question_text": q}),
+                    )
+                    if dj.ok:
+                        print("💬 Dialog response:")
+                        print(json.dumps(dj.json(), indent=2, ensure_ascii=False))
+                    else:
+                        print(f"❌ Dialog failed: {dj.status_code} {dj.text}")
                 return
 
             if status == "failed":

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import cast
 
-from hibikasu_agent.api.services import ai as ai_service
 from hibikasu_agent.api.services.base import ReviewService
+from hibikasu_agent.services import runtime as ai_service
 
 
 def get_service() -> ReviewService:
