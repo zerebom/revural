@@ -4,8 +4,11 @@ This agent runs four specialist LlmAgents concurrently via ParallelAgent,
 then merges their structured outputs using a tool into FinalIssuesResponse.
 """
 
+from typing import cast
+
 from google.adk.agents import LlmAgent, ParallelAgent, SequentialAgent
 from google.adk.tools import FunctionTool
+from pydantic import BaseModel as PydanticBaseModel
 
 from hibikasu_agent.agents.parallel_orchestrator.tools import (
     aggregate_final_issues,
@@ -14,7 +17,6 @@ from hibikasu_agent.agents.specialist import (
     create_role_agents,
     create_specialist_from_role,
 )
-from hibikasu_agent.schemas import IssuesResponse
 from hibikasu_agent.schemas.models import FinalIssuesResponse
 
 
@@ -33,7 +35,6 @@ def create_parallel_review_agent(model: str = "gemini-2.5-flash") -> SequentialA
         name="engineer_specialist",
         description="バックエンドエンジニアの専門的観点からPRDをレビュー",
         model=model,
-        output_schema=IssuesResponse,
         output_key="engineer_issues",
     )
 
@@ -42,7 +43,6 @@ def create_parallel_review_agent(model: str = "gemini-2.5-flash") -> SequentialA
         name="ux_designer_specialist",
         description="UXデザイナーの専門的観点からPRDをレビュー",
         model=model,
-        output_schema=IssuesResponse,
         output_key="ux_designer_issues",
     )
 
@@ -51,7 +51,6 @@ def create_parallel_review_agent(model: str = "gemini-2.5-flash") -> SequentialA
         name="qa_tester_specialist",
         description="QAテスターの専門的観点からPRDをレビュー",
         model=model,
-        output_schema=IssuesResponse,
         output_key="qa_tester_issues",
     )
 
@@ -60,7 +59,6 @@ def create_parallel_review_agent(model: str = "gemini-2.5-flash") -> SequentialA
         name="pm_specialist",
         description="プロダクトマネージャーの専門的観点からPRDをレビュー",
         model=model,
-        output_schema=IssuesResponse,
         output_key="pm_issues",
     )
 
@@ -89,7 +87,7 @@ def create_parallel_review_agent(model: str = "gemini-2.5-flash") -> SequentialA
             "出力はツールの戻り値（FinalIssuesResponse）のみを返してください。"
         ),
         tools=[aggregate_tool],
-        output_schema=FinalIssuesResponse,
+        output_schema=cast(type[PydanticBaseModel], FinalIssuesResponse),
         output_key="final_review_issues",
     )
 

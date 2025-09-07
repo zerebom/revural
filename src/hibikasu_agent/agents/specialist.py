@@ -4,9 +4,9 @@ import tomllib
 from pathlib import Path
 
 from google.adk.agents import LlmAgent
+from pydantic import BaseModel as PydanticBaseModel
 
 from hibikasu_agent.schemas import IssuesResponse
-from hibikasu_agent.schemas.models import BaseModel
 from hibikasu_agent.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -39,7 +39,7 @@ def create_specialist(  # noqa: PLR0913
     instruction: str | None = None,
     system_prompt: str | None = None,
     task_prompt: str | None = None,
-    output_schema: type[BaseModel] | None = IssuesResponse,
+    output_schema: type[PydanticBaseModel] | None = None,
     output_key: str | None = None,
 ) -> LlmAgent:
     """Generic factory for creating a specialist ``LlmAgent``.
@@ -107,7 +107,7 @@ def create_specialist_from_role(  # noqa: PLR0913
     description: str,
     model: str = "gemini-2.5-flash",
     purpose: str = "review",  # "review" or "chat"
-    output_schema: type[BaseModel] | None = IssuesResponse,
+    output_schema: type[PydanticBaseModel] | None = None,
     output_key: str | None = None,
 ) -> LlmAgent:
     """Create a specialist using prompts loaded by role key.
@@ -139,14 +139,16 @@ def create_specialist_from_role(  # noqa: PLR0913
     instr = (role_cfg.get("instruction_review") or "").strip()
 
     # Ensure review uses IssuesResponse schema by default
-    output_schema = output_schema or IssuesResponse
+    from typing import cast
+
+    output_schema_use = cast(type[PydanticBaseModel], IssuesResponse) if output_schema is None else output_schema
 
     return create_specialist(
         name=name,
         description=description,
         model=model,
         instruction=instr,
-        output_schema=output_schema,
+        output_schema=output_schema_use,
         output_key=output_key,
     )
 
@@ -170,7 +172,6 @@ def create_role_agents(
         description=f"{role_key} の専門的観点からPRDをレビュー",
         model=model,
         purpose="review",
-        output_schema=IssuesResponse,
         output_key=review_output_key,
     )
     chat_agent = create_specialist_from_role(
