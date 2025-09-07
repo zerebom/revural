@@ -25,7 +25,7 @@ def install_default_review_impl(app: Any) -> None:  # noqa: PLR0915
             create_parallel_review_agent,
         )
 
-        model_name = os.getenv("ADK_MODEL") or "gemini-2.0-flash"
+        model_name = os.getenv("ADK_MODEL") or "gemini-2.5-flash-lite"
         logger.info("Initializing ADK parallel review agent", extra={"model": model_name})
         agent = create_parallel_review_agent(model=model_name)
         app.state.adk_parallel_review_agent = agent
