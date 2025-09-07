@@ -42,15 +42,31 @@ class FinalIssuesResponse(BaseModel):
 class IssueItem(BaseModel):
     """Minimal issue item produced by specialists.
 
-    Used by specialist LlmAgents and parallel aggregation.
+    Accepts a broader set of severity labels and normalizes them to
+    one of: High / Mid / Low. Case-insensitive. Common synonyms like
+    major/medium/minor are supported.
     """
 
-    severity: str = Field(pattern="^(High|Mid|Low|Medium)$")
+    severity: str = Field()
     comment: str = Field(min_length=1)
     original_text: str = Field(default="")
 
+    @staticmethod
+    def _map_severity(value: str) -> str:
+        v = (value or "").strip().lower()
+        if v in {"high", "major", "critical", "severe"}:
+            return "High"
+        if v in {"mid", "medium", "moderate"}:
+            return "Mid"
+        if v in {"low", "minor", "trivial"}:
+            return "Low"
+        # Fallback: try title-case known values; otherwise default to Mid to avoid hard failure
+        if v and v.title() in {"High", "Mid", "Low"}:
+            return v.title()
+        return "Mid"
+
     def normalize_severity(self) -> str:
-        return "Mid" if self.severity == "Medium" else self.severity
+        return self._map_severity(self.severity)
 
 
 class IssuesResponse(BaseModel):
