@@ -19,6 +19,14 @@ def set_review_impl(func: Callable[[str], list[Issue]] | None) -> None:
     _review_impl_holder[0] = func
 
 
+def has_review_impl() -> bool:
+    """Return True if a custom review implementation has been registered.
+
+    Used by app startup to avoid overriding test-injected or user-provided impls.
+    """
+    return _review_impl_holder[0] is not None
+
+
 def new_review_session(prd_text: str, panel_type: str | None = None) -> str:
     review_id = str(uuid.uuid4())
     reviews_in_memory[review_id] = {
