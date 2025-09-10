@@ -16,10 +16,16 @@ def _extract_list(value: Any) -> list[dict[str, Any]]:
     - list[dict]
     - dict with key "issues"
     - pydantic model with attribute "issues"
+    - str containing JSON (with or without markdown code block)
     - None or unexpected -> returns []
     """
     if value is None:
         return []
+
+    # If value is a string, skip processing (not supported without JSON parsing)
+    if isinstance(value, str):
+        return []
+
     # Already a list of dicts
     if isinstance(value, list):
         return cast("list[dict[str, Any]]", value)

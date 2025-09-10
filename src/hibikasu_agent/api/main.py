@@ -27,6 +27,16 @@ def _allowed_origins_from_env() -> list[str]:
     ]
 
 
+def _allowed_origin_regex_from_env() -> str | None:
+    r"""Optional regex string for CORS allow_origin_regex.
+
+    Set CORS_ALLOW_ORIGIN_REGEX to a Python-style regex, e.g.:
+    ^https?://(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+)(:\d+)?$
+    """
+    regex = os.getenv("CORS_ALLOW_ORIGIN_REGEX")
+    return regex if regex else None
+
+
 # App assembly only; routers hold handlers
 @asynccontextmanager
 async def lifespan(app: FastAPI):  # type: ignore[no-untyped-def]
@@ -52,6 +62,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_origin_regex=_allowed_origin_regex_from_env(),
 )
 
 # Routers
