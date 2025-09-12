@@ -206,6 +206,9 @@ src/hibikasu_agent/
     -   [ ] `AbstractReviewService` の `kickoff_compute` と `new_review_session` を、`async def start_review_process(...)` という単一の抽象メソッドに置き換える。
     -   [ ] `AiService` と `MockService` が、この新しい非同期メソッドを正しく実装するように修正する。
     -   [ ] `api/routers/reviews.py` が、新しい `start_review_process` メソッドを `await` 付きで呼び出すように修正する。
+- **テストToDo**:
+    -   [ ] `tests/api/test_reviews_endpoints.py` を修正し、`start_review_process` を `await` で呼び出すように変更する。
+    -   [ ] `dependency_overrides` を使ったテストで、`MockService` の新しい `start_review_process` が正しく動作することを検証する。
 
 ---
 
@@ -219,6 +222,10 @@ src/hibikasu_agent/
     -   [ ] `runtime.py` の `new_review_session`, `get_review_session`, `find_issue`, `kickoff_compute` のロジックを、対応する `AiService` のメソッド内に移植し、グローバル変数ではなく `self._reviews_in_memory` を参照するように書き換える。
     -   [ ] `_review_impl_holder` や `set_review_impl` といった古いDIの仕組みを完全に撤廃し、`AiService` が `adk.py` のレビューパイプラインを直接インポートして呼び出すように変更する。
     -   [ ] `AiService` が `runtime.py` に依存しなくなったことを確認し、`runtime.py` ファイルを削除する。
+- **テストToDo**:
+    -   [ ] `tests/services/test_ai_service.py` という新しいテストファイルを作成する。
+    -   [ ] `AiService` を直接インスタンス化し、`adk.py` のレビューパイプラインをモック化（`monkeypatch` を使用）した上で、`start_review_process` がパイプラインを正しく呼び出すことを検証するユニットテストを追加する。
+    -   [ ] インメモリキャッシュのロジック（`new` -> `get` -> `find`）が、`AiService` のインスタンス内で完結していることを検証するユニットテストを追加する。
 
 ---
 
@@ -231,6 +238,9 @@ src/hibikasu_agent/
     -   [ ] `schemas/reviews.py`（あるいは `schemas/common.py`）に、`status`, `issues`, `prd_text` などのフィールドを持つ `ReviewSession(BaseModel)` クラスを定義する。
     -   [ ] `AiService` と `MockService` のインメモリキャッシュの型ヒントを `dict[str, ReviewSession]` に変更する。
     -   [ ] `get_review_session` メソッドの戻り値の型ヒントを `dict[str, Any]` から `ReviewSession` に変更し、ルーター側もそれに合わせて修正する。
+- **テストToDo**:
+    -   [ ] `AiService` と `MockService` の `get_review_session` メソッドが、`dict` ではなく `ReviewSession` モデルのインスタンスを返すことを検証するアサーションを追加・修正する。
+    -   [ ] `tests/api/` のテストで、`/reviews/{review_id}` エンドポイントのレスポンスが、新しい `ReviewSession` のスキーマと一致することを検証する。
 
 ---
 
