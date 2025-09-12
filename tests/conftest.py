@@ -11,20 +11,20 @@ from __future__ import annotations
 from collections.abc import Generator
 
 import pytest
-from hibikasu_agent.api import ai_services
+from hibikasu_agent.api.schemas import Issue
+from hibikasu_agent.services.providers import adk
 
 
 @pytest.fixture(autouse=True)
-def inject_fake_ai_impl() -> Generator[None, None, None]:
+def inject_fake_ai_impl(monkeypatch) -> Generator[None, None, None]:
     """Auto-inject a fake AI review implementation for all tests.
 
-    Returns a single deterministic issue using the API schema, so the
-    service layer stores and returns predictable data.
+    Monkeypatch the ADK pipeline entry to return deterministic issues.
     """
 
     def impl(prd_text: str):
         return [
-            ai_services.Issue(
+            Issue(
                 issue_id="TST-1",
                 priority=1,
                 agent_name="AI-Orchestrator",
@@ -33,8 +33,8 @@ def inject_fake_ai_impl() -> Generator[None, None, None]:
             )
         ]
 
-    ai_services.set_review_impl(impl)
+    monkeypatch.setattr(adk, "run_review", impl, raising=False)
     try:
         yield
     finally:
-        ai_services.set_review_impl(None)
+        pass

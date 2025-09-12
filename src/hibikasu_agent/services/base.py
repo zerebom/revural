@@ -14,8 +14,10 @@ class AbstractReviewService(ABC):
     """
 
     @abstractmethod
-    def new_review_session(self, prd_text: str, panel_type: str | None = None) -> str:
-        """Create a new review session and return its ID.
+    async def start_review_process(self, prd_text: str, panel_type: str | None = None) -> str:
+        """Start a new review process and return its session ID.
+
+        This method combines session creation and computation kickoff into a single operation.
 
         Args:
             prd_text: The PRD text to review
@@ -48,17 +50,5 @@ class AbstractReviewService(ABC):
 
         Returns:
             The issue data if found, None otherwise
-        """
-        ...
-
-    @abstractmethod
-    def kickoff_compute(self, review_id: str) -> None:
-        """Start the computation of issues for a review session.
-
-        This method may run synchronously or asynchronously depending on
-        the implementation. Routers may schedule this via FastAPI BackgroundTasks.
-
-        Args:
-            review_id: The review session ID to compute issues for
         """
         ...

@@ -199,38 +199,48 @@ src/hibikasu_agent/
 
 #### 1. サービスインターフェースの見直し (What & Why)
 
-- **What**: `kickoff_compute` メソッドを `AbstractReviewService` インターフェースから削除する。その責務を `new_review_session` メソッドに統合し、`start_review_process` のような単一の非同期メソッドへと再設計する。
-- **Why**: 現在の設計では、「レビューの受付」と「レビューの実行開始」という、本来一体であるべき責務が2つのメソッドに分離してしまっている。これらを一つに統合することで、サービスを利用する側（ルーター）のコードがシンプルになり、インターフェースがより直感的になる。
+-   **What**: `kickoff_compute` をインターフェースから削除し、`new_review_session` を `start_review_process` のような単一の非同期メソッドに責務を統合する。これにより、クライアントは単一のメソッドを呼び出すだけでレビュープロセスを開始できるようになる。
+-   **Why**: `new_review_session` でIDを発行し、別途 `kickoff_compute` をバックグラウンドで呼び出す、という現在の2段階のプロセスは、責務が分離しすぎており、APIクライアント側の実装を複雑にしている。単一のメソッドにまとめることで、サービスのインターフェースがより直感的で使いやすくなる。
+-   **状況**: ❌ **未着手**。現在の実装は `kickoff_compute` を持つ古いインターフェースのままです。
 
-- **ToDo**:
-    -   [ ] `AbstractReviewService` の `kickoff_compute` と `new_review_session` を、`async def start_review_process(...)` という単一の抽象メソッドに置き換える。
-    -   [ ] `AiService` と `MockService` が、この新しい非同期メソッドを正しく実装するように修正する。
-    -   [ ] `api/routers/reviews.py` が、新しい `start_review_process` メソッドを `await` 付きで呼び出すように修正する。
+-   **ToDo**:
+    -   [x] サービスインターフェースを `async def start_review_process(...) -> str` に統一し、ルーターは `await service.start_review_process(...)` を呼ぶ。
 
 ---
 
 #### 2. `AiService` の自己完結化 (What & Why)
 
-- **What**: `runtime.py` が持っているロジックと状態（インメモリキャッシュ）を、すべて `AiService` クラスのメソッドとインスタンス変数として移植する。最終的に `runtime.py` を削除する。
-- **Why**: 現在の `AiService` は `runtime.py` の薄いラッパーであり、ロジックが外部モジュールに分散している。また、`runtime.py` はグローバル変数 (`reviews_in_memory`, `_review_impl_holder`) を多用しており、テストの分離や将来の拡張を困難にしている。ロジックと状態を `AiService` クラス内にカプセル化することで、クラスが自己完結し、オブジェクト指向の恩恵を最大限に享受できる。
+-   **What**: `runtime.py` が担っていたロジック（インメモリキャッシュ、レビュー実行、スパン情報付与など）を、すべて `AiService` クラスのメソッドとして内部に移植する。
+-   **Why**: `runtime.py` のようなモジュールレベルのグローバル変数（`reviews_in_memory`）や関数に依存する設計は、状態管理が不透明で、テストが困難になる。ロジックをクラス内にカプセル化することで、`AiService` は自己完結し、再利用性とテスト容易性が大幅に向上する。
+-   **状況**: ✅ **完了**。`AiService` は内部ストアを持ち、ADKパイプラインを直接呼び出します。
 
-- **ToDo**:
-    -   [ ] `AiService` の `__init__` で、`self._reviews_in_memory = {}` のようにインスタンス変数を初期化する。
-    -   [ ] `runtime.py` の `new_review_session`, `get_review_session`, `find_issue`, `kickoff_compute` のロジックを、対応する `AiService` のメソッド内に移植し、グローバル変数ではなく `self._reviews_in_memory` を参照するように書き換える。
-    -   [ ] `_review_impl_holder` や `set_review_impl` といった古いDIの仕組みを完全に撤廃し、`AiService` が `adk.py` のレビューパイプラインを直接インポートして呼び出すように変更する。
-    -   [ ] `AiService` が `runtime.py` に依存しなくなったことを確認し、`runtime.py` ファイルを削除する。
+-   **ToDo**:
+    -   [x] `AiService` に `__init__` を追加し、`self._reviews: dict[str, ReviewRuntimeSession] = {}` を初期化する。
+    -   [x] `runtime.py` の `new_review_session`, `get_review_session`, `find_issue`, `kickoff_compute` のロジックを、`AiService` のメソッド内に移植して `self._reviews` を使用する。
+    -   [x] 古いDI（`set_review_impl` 等）への依存を削除し、`providers.adk.run_review` を直接呼び出す。
+    -   [x] `src/hibikasu_agent/services/runtime.py` を削除する。
 
 ---
 
 #### 3. データ構造の厳密化 (What & Why)
 
-- **What**: レビューセッションの状態を保持するデータ構造を、現在の `dict[str, Any]` から、Pydanticモデル (`ReviewSession`) に変更する。
-- **Why**: `dict[str, Any]` は、どのようなキーが存在し、その値がどの型であるべきかを全く保証しない。これは、typoによる `KeyError` や、予期せぬ `TypeError` の温床となる。Pydanticモデルを導入することで、データ構造がコードとして文書化され、静的解析やIDEの補完が効くようになり、安全性と開発体験が劇的に向上する。
+-   **What**: サービスの内部でレビューセッションの状態を管理するために、Pydanticモデル `ReviewRuntimeSession` を導入する。
+-   **Why**: `dict[str, Any]` のような曖昧な型を使い続けると、キーのtypoや、予期しないデータ構造によるバグが発生しやすい。厳密な型（モデル）を定義することで、静的解析の恩恵を受けられ、コードの堅牢性と可読性が向上する。
+-   **状況**: ✅ **ほぼ完了**。`models.py` は完璧で、`runtime.py`, `mock_service.py` は対応済み。`AiService` が未対応なだけです。
+
+-   **ToDo**:
+    -   [ ] `src/hibikasu_agent/services/models.py` に `ReviewRuntimeSession(BaseModel)` を作成する。
+
+---
+
+#### 4. コード全体の一貫性確保 (What & Why)
+
+- **What**: リファクタリングの過程で変更されたクラス名やモジュールパスを、プロジェクト全体で統一する。特に、サービス層のインターフェース名を `AbstractReviewService` に一貫させる。
+- **Why**: クラス名の不整合は、`ImportError` や `TypeError` の直接的な原因となる。リファクタリングの最終段階で全体をチェックし、一貫性を確保することで、コードベースの信頼性を担保する。
+- **状況**: ✅ **完了**。全ファイルで `AbstractReviewService` に統一済みです。
 
 - **ToDo**:
-    -   [ ] `schemas/reviews.py`（あるいは `schemas/common.py`）に、`status`, `issues`, `prd_text` などのフィールドを持つ `ReviewSession(BaseModel)` クラスを定義する。
-    -   [ ] `AiService` と `MockService` のインメモリキャッシュの型ヒントを `dict[str, ReviewSession]` に変更する。
-    -   [ ] `get_review_session` メソッドの戻り値の型ヒントを `dict[str, Any]` から `ReviewSession` に変更し、ルーター側もそれに合わせて修正する。
+    - [x] `services/ai_service.py`, `services/mock_service.py`, `api/dependencies.py`, `api/routers/reviews.py` などで、`AbstractReviewService` に統一する。
 
 ---
 

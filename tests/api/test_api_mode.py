@@ -1,6 +1,7 @@
 import os
 
-from hibikasu_agent.api import ai_services
+from hibikasu_agent.api.schemas import Issue
+from hibikasu_agent.services.providers import adk
 
 
 def test_default_mode_is_mock(monkeypatch, client_ai_mode):
@@ -26,23 +27,19 @@ def test_ai_mode_uses_ai_services(monkeypatch, client_ai_mode):
     # Switch to ai mode
     monkeypatch.setenv("HIBIKASU_API_MODE", "ai")
 
-    # Inject deterministic AI review implementation
-    def fake_impl(prd_text: str):
+    # Inject deterministic AI review implementation by monkeypatching ADK runner
+    def impl(prd_text: str):
         return [
-            {
-                "issue_id": "TST-1",
-                "priority": 1,
-                "agent_name": "AI-Orchestrator",
-                "comment": "fake review",
-                "original_text": prd_text,
-            }
+            Issue(
+                issue_id="TST-1",
+                priority=1,
+                agent_name="AI-Orchestrator",
+                comment="fake review",
+                original_text=prd_text,
+            )
         ]
 
-    # Convert dicts to Issue via the service call path
-    def impl(prd_text: str):
-        return [ai_services.Issue(**d) for d in fake_impl(prd_text)]
-
-    ai_services.set_review_impl(impl)
+    monkeypatch.setattr(adk, "run_review", impl, raising=False)
 
     client = client_ai_mode
 

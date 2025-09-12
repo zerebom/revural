@@ -44,6 +44,17 @@ class Issue(BaseModel):
     span: IssueSpan | None = None
 
 
+class ReviewSession(BaseModel):
+    """Internal model representing a review session state."""
+
+    created_at: float
+    status: Literal["processing", "completed", "failed", "not_found"]
+    issues: list[Issue] | None = None
+    prd_text: str
+    panel_type: str | None = None
+    polls: int = 0
+
+
 class StatusResponse(BaseModel):
     """Polling response for GET /reviews/{review_id}."""
 
