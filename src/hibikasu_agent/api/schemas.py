@@ -5,6 +5,16 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
+class IssueSpan(BaseModel):
+    """Character index range of the highlighted text in the PRD.
+
+    Indices are 0-based, half-open interval [start_index, end_index).
+    """
+
+    start_index: int
+    end_index: int
+
+
 class ReviewRequest(BaseModel):
     """Request body for starting a review session."""
 
@@ -30,6 +40,8 @@ class Issue(BaseModel):
     agent_name: str
     comment: str
     original_text: str
+    # Optional highlight span into the original PRD text
+    span: IssueSpan | None = None
 
 
 class StatusResponse(BaseModel):

@@ -5,7 +5,7 @@ import uuid
 from collections.abc import Callable
 from typing import Any, cast
 
-from hibikasu_agent.api.schemas import Issue
+from hibikasu_agent.api.schemas import Issue, IssueSpan
 from hibikasu_agent.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -70,9 +70,20 @@ def get_review_session(review_id: str) -> dict[str, Any]:
         extra={"review_id": review_id, "polls": data["polls"], "status": data.get("status")},
     )
     if data["polls"] <= 1:
+        logger.info(
+            "first poll -> processing",
+            extra={"review_id": review_id},
+        )
         return {"status": "processing", "issues": None}
 
-    return {"status": data.get("status", "processing"), "issues": data.get("issues")}
+    status = str(data.get("status", "processing"))
+    issues = data.get("issues")
+    if status == "completed":
+        logger.info(
+            "poll -> completed",
+            extra={"review_id": review_id, "issues_count": len(issues or []) if isinstance(issues, list) else 0},
+        )
+    return {"status": status, "issues": issues}
 
 
 def find_issue(review_id: str, issue_id: str) -> Issue | None:
@@ -97,14 +108,51 @@ def kickoff_compute(review_id: str) -> None:
     if data.get("issues") is not None:
         return
     try:
-        logger.info("kickoff_compute starting", extra={"review_id": review_id})
+        t0 = time.perf_counter()
+        logger.info(
+            "kickoff_compute starting",
+            extra={
+                "review_id": review_id,
+                "prd_len": len(str(data.get("prd_text", ""))),
+            },
+        )
         impl = _review_impl_holder[0] or _default_review_impl
-        issues = impl(str(data.get("prd_text", "")))
+        prd_text = str(data.get("prd_text", ""))
+        issues = impl(prd_text)
+        # Enrich issues with span if not provided
+        spans_added = 0
+        try:
+            for iss in issues or []:
+                if getattr(iss, "span", None) is not None:
+                    continue
+                # naive first occurrence match
+                snippet = (iss.original_text or "").strip()
+                if not snippet:
+                    continue
+                start = prd_text.find(snippet)
+                if start >= 0:
+                    end = start + len(snippet)
+                    try:
+                        iss.span = IssueSpan(start_index=start, end_index=end)
+                        spans_added += 1
+                    except Exception:  # nosec B110
+                        # ignore span assignment errors to avoid failing the whole review
+                        pass
+        except Exception:  # nosec B110
+            # Best-effort enrichment; do not impact completion
+            pass
+
         data["issues"] = issues
         data["status"] = "completed"
+        elapsed_ms = int((time.perf_counter() - t0) * 1000)
         logger.info(
             "kickoff_compute completed",
-            extra={"review_id": review_id, "issues_count": len(issues) if issues else 0},
+            extra={
+                "review_id": review_id,
+                "issues_count": len(issues) if issues else 0,
+                "spans_added": spans_added,
+                "elapsed_ms": elapsed_ms,
+            },
         )
     except Exception as _err:
         data["status"] = "failed"

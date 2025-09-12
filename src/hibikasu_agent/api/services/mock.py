@@ -4,7 +4,7 @@ import time
 import uuid
 from typing import Any, cast
 
-from hibikasu_agent.api.schemas import Issue
+from hibikasu_agent.api.schemas import Issue, IssueSpan
 
 # In-memory store for Week1 mock implementation
 reviews_in_memory: dict[str, dict[str, Any]] = {}
@@ -24,7 +24,7 @@ def new_review_session(prd_text: str, panel_type: str | None = None) -> str:
     return review_id
 
 
-def _dummy_issues() -> list[Issue]:
+def _dummy_issues(prd_text: str) -> list[Issue]:
     # Deterministic sample issues matching architecture.md 10.1 fields
     return [
         Issue(
@@ -63,7 +63,19 @@ def get_review_session(review_id: str) -> dict[str, Any]:
 
     # Mark as completed and attach dummy issues once
     if data.get("issues") is None:
-        data["issues"] = _dummy_issues()
+        issues = _dummy_issues(str(data.get("prd_text", "")))
+        # best-effort span enrichment
+        prd_text = str(data.get("prd_text", ""))
+        for iss in issues:
+            if iss.span is not None:
+                continue
+            snippet = (iss.original_text or "").strip()
+            if not snippet:
+                continue
+            pos = prd_text.find(snippet)
+            if pos >= 0:
+                iss.span = IssueSpan(start_index=pos, end_index=pos + len(snippet))
+        data["issues"] = issues
         data["status"] = "completed"
 
     return {"status": data["status"], "issues": data["issues"]}

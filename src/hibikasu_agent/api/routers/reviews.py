@@ -15,8 +15,10 @@ from hibikasu_agent.api.schemas import (
 )
 from hibikasu_agent.api.services import get_service
 from hibikasu_agent.services.providers.adk import answer_dialog as adk_answer_dialog
+from hibikasu_agent.utils.logging_config import get_logger
 
 router = APIRouter()
+logger = get_logger(__name__)
 
 
 @router.post("/reviews", response_model=ReviewResponse)
@@ -27,12 +29,37 @@ async def start_review(req: ReviewRequest, background_tasks: BackgroundTasks) ->
     kickoff = getattr(svc, "kickoff_compute", None)
     if callable(kickoff):
         background_tasks.add_task(kickoff, review_id)
+        logger.info(
+            "start_review scheduled kickoff",
+            extra={
+                "review_id": review_id,
+                "panel_type": req.panel_type or "",
+                "prd_len": len(req.prd_text or ""),
+            },
+        )
+    else:
+        logger.info(
+            "start_review no kickoff available",
+            extra={
+                "review_id": review_id,
+                "panel_type": req.panel_type or "",
+                "prd_len": len(req.prd_text or ""),
+            },
+        )
     return ReviewResponse(review_id=review_id)
 
 
 @router.get("/reviews/{review_id}", response_model=StatusResponse)
 async def get_review(review_id: str) -> StatusResponse:
     data: dict[str, Any] = get_service().get_review_session(review_id)
+    try:
+        issues_count = len(data.get("issues") or []) if isinstance(data.get("issues"), list) else 0
+        logger.debug(
+            "get_review polled",
+            extra={"review_id": review_id, "status": data.get("status"), "issues_count": issues_count},
+        )
+    except Exception:  # nosec B110
+        pass
     return StatusResponse.model_validate(data)
 
 
