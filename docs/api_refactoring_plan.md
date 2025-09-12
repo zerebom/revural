@@ -184,11 +184,11 @@ src/hibikasu_agent/
 -   [ ] **インターフェース実装の修正:**
     -   [ ] `MockService` と `AiService` が `AbstractReviewService` のすべての抽象メソッド（特に `kickoff_compute`）を実装するように修正する。
 -   [ ] **ロギング設定のリファクタリング:**
-    -   [ ] `main.py` の `lifespan` 関数内にあるロギング設定ロジックを、`hibikasu_agent.utils.logging_config` に移動し、`lifespan` から呼び出すだけにする。
-        -   [ ] `utils/logging_config.py` に `setup_application_logging(level: str)` のような関数を新設する。
-        -   [ ] `main.py` の `lifespan` 内にあったハンドラ設定などのロジックを `setup_application_logging` に移植する。
-        -   [ ] `main.py` の `lifespan` は `setup_application_logging(settings.hibikasu_log_level)` を呼び出すだけの実装にする。
--   [ ] `main.py` から不要になったインポート文 (`logging`, `sys` など) を削除する。
+-   [x] `main.py` の `lifespan` 関数内にあるロギング設定ロジックを、`hibikasu_agent.utils.logging_config` に移動し、`lifespan` から呼び出すだけにする。
+    -   [x] `utils/logging_config.py` に `setup_application_logging(level: str)` の関数を新設する。
+    -   [x] `main.py` の `lifespan` 内にあったハンドラ設定などのロジックを `setup_application_logging` に移植する。
+    -   [x] `main.py` の `lifespan` は `setup_application_logging(settings.hibikasu_log_level)` を呼び出すだけの実装にする。
+-   [x] `main.py` から不要になったインポート文 (`logging`, `sys` など) を削除する。
 -   [ ] 全体の修正後、APIが正常に動作することをテストで確認する。
 
 ---
