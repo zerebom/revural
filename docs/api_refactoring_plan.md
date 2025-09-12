@@ -142,6 +142,29 @@ src/hibikasu_agent/
 
 ---
 
+### ステップ3.5: テストのリファクタリング (Decoupling Tests)
+
+**目的**: DI導入のメリットを最大限に活かし、API層のテストをサービス層から分離する。これにより、高速で安定し、関心事が明確なユニットテストを実現する。
+
+#### As-Is (現状)
+- APIのテスト (`tests/api/test_reviews_endpoints.py`) が、`TestClient` を通じてアプリケーション全体を起動し、デフォルトの `AiService` に依存してしまっている。
+- テストが遅く、不安定になる可能性があり、API層だけの振る舞いを検証することが難しい。
+
+#### To-Be (理想形)
+- APIのテスト実行時には、FastAPIの `app.dependency_overrides` を使って、`get_service` 依存性が常に `MockService` を返すように上書きされる。
+- テストは `MockService` の高速かつ予測可能なレスポンスを前提に書かれ、API層のロジック（リクエストの検証、適切なサービスの呼び出し、レスポンスの整形など）のみを検証することに集中できる。
+- `AiService` のテストは、独立したサービスクラスのユニットテストとして（必要であれば）別途実装される。
+
+#### ToDoリスト
+-   [ ] `tests/api/conftest.py` または各テストファイルの先頭で、`app.dependency_overrides` を設定するロジックを追加する。
+    -   [ ] `MockService` を返すDI関数 (`override_get_service`) を定義する。
+    -   [ ] `app.dependency_overrides[get_service] = override_get_service` のようにして、テスト実行時にDIを上書きする。
+-   [ ] `tests/api/test_reviews_endpoints.py` を修正する。
+    -   [ ] テストのアサーションを、`MockService` が返すダミーデータに基づいて検証するように書き換える。
+    -   [ ] AIモデルの不安定な挙動に依存するテスト（例: 2回ポーリングして `completed` になることを期待する部分）を、より確実なアサーションに修正する。
+
+---
+
 ### ステップ4: スキーマの分割 (Data Models)
 
 **目的:** 機能ごとにスキーマ定義ファイルを分割し、関連性を明確にする。
