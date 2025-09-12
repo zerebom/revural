@@ -19,6 +19,7 @@ def _extract_list(value: Any) -> list[dict[str, Any]]:
     - str containing JSON (with or without markdown code block)
     - None or unexpected -> returns []
     """
+    logger.info(f"Extracting list from {str(value)[:300]}")
     if value is None:
         return []
 
