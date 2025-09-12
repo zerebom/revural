@@ -169,11 +169,11 @@ src/hibikasu_agent/
 
 **目的:** 機能ごとにスキーマ定義ファイルを分割し、関連性を明確にする。
 
--   [ ] `src/hibikasu_agent/api/schemas/` ディレクトリを作成する。
--   [ ] `src/hibikasu_agent/api/schemas/reviews.py` を作成する。
--   [ ] 既存の `src/hibikasu_agent/api/schemas.py` から、`reviews` に関連する全てのPydanticモデル (`ReviewRequest`, `Issue`, `StatusResponse`など) を `api/schemas/reviews.py` に移動する。
--   [ ] `api/routers/reviews.py` のスキーマのインポート元を `api.schemas` から `api.schemas.reviews` に修正する。
--   [ ] `src/hibikasu_agent/api/schemas.py` が空になれば削除する。
+-   [x] `src/hibikasu_agent/api/schemas/` ディレクトリを作成する。
+-   [x] `src/hibikasu_agent/api/schemas/reviews.py` を作成する。
+-   [x] 既存の `src/hibikasu_agent/api/schemas.py` から、`reviews` に関連する全てのPydanticモデル (`ReviewRequest`, `Issue`, `StatusResponse`など) を `api/schemas/reviews.py` に移動する。
+-   [x] `src/hibikasu_agent/api/schemas/__init__.py` で `reviews` の型を再エクスポートし、既存の `from hibikasu_agent.api.schemas import ...` が引き続き機能するようにする。（必要に応じて `api.schemas.reviews` へ切替可能）
+-   [x] `src/hibikasu_agent/api/schemas.py` を削除する。
 
 ---
 
@@ -181,10 +181,13 @@ src/hibikasu_agent/
 
 **目的:** `main.py` を最終的に整理し、責務をアプリケーションの起動のみに限定する。
 
--   [ ] `main.py` の `lifespan` 関数内にあるロギング設定ロジックを、`hibikasu_agent.utils.logging_config` に移動し、`lifespan` から呼び出すだけにする。
-    -   [ ] `utils/logging_config.py` に `setup_application_logging(level: str)` のような関数を新設する。
-    -   [ ] `main.py` の `lifespan` 内にあったハンドラ設定などのロジックを `setup_application_logging` に移植する。
-    -   [ ] `main.py` の `lifespan` は `setup_application_logging(settings.hibikasu_log_level)` を呼び出すだけの実装にする。
+-   [ ] **インターフェース実装の修正:**
+    -   [ ] `MockService` と `AiService` が `AbstractReviewService` のすべての抽象メソッド（特に `kickoff_compute`）を実装するように修正する。
+-   [ ] **ロギング設定のリファクタリング:**
+    -   [ ] `main.py` の `lifespan` 関数内にあるロギング設定ロジックを、`hibikasu_agent.utils.logging_config` に移動し、`lifespan` から呼び出すだけにする。
+        -   [ ] `utils/logging_config.py` に `setup_application_logging(level: str)` のような関数を新設する。
+        -   [ ] `main.py` の `lifespan` 内にあったハンドラ設定などのロジックを `setup_application_logging` に移植する。
+        -   [ ] `main.py` の `lifespan` は `setup_application_logging(settings.hibikasu_log_level)` を呼び出すだけの実装にする。
 -   [ ] `main.py` から不要になったインポート文 (`logging`, `sys` など) を削除する。
 -   [ ] 全体の修正後、APIが正常に動作することをテストで確認する。
 
@@ -195,6 +198,10 @@ src/hibikasu_agent/
 **目的:** サービス層のクラス構造が整った後、個々のメソッドの内部実装を改善し、コードの可読性、安全性、テスト容易性をさらに向上させる。
 
 #### ToDoリスト
+-   [ ] **`AiService` の自己完結化:**
+    -   [ ] `runtime.py` のロジック（インメモリキャッシュ、レビュー実行、スパン情報付与など）をすべて `AiService` クラスのメソッドとして移植する。
+    -   [ ] `_review_impl_holder` や `set_review_impl` といったグローバルなDIの仕組みを撤廃し、`AiService` が直接 `adk.py` のレビューパイプラインを呼び出すように修正する。
+    -   [ ] `AiService` が自己完結したクラスになった後、不要になった `runtime.py` を削除する。
 -   [ ] **データ構造の厳密化:**
     -   [ ] レビューセッションの状態を管理するための Pydantic モデル (`ReviewSession`) を定義し、インメモリキャッシュ (`reviews_in_memory`) の型付けを `dict[str, Any]` から `dict[str, ReviewSession]` に変更する。
 -   [ ] **メソッドの責務純粋化:**

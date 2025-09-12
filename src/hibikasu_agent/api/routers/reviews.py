@@ -14,7 +14,7 @@ from hibikasu_agent.api.schemas import (
     StatusResponse,
     SuggestResponse,
 )
-from hibikasu_agent.services.base import ReviewServiceBase
+from hibikasu_agent.services.base import AbstractReviewService
 from hibikasu_agent.services.providers.adk import answer_dialog as adk_answer_dialog
 from hibikasu_agent.utils.logging_config import get_logger
 
@@ -26,7 +26,7 @@ logger = get_logger(__name__)
 async def start_review(
     req: ReviewRequest,
     background_tasks: BackgroundTasks,
-    service: ReviewServiceBase = Depends(get_service),
+    service: AbstractReviewService = Depends(get_service),
 ) -> ReviewResponse:
     svc = service
     review_id = svc.new_review_session(req.prd_text, req.panel_type)
@@ -55,7 +55,7 @@ async def start_review(
 
 
 @router.get("/reviews/{review_id}", response_model=StatusResponse)
-async def get_review(review_id: str, service: ReviewServiceBase = Depends(get_service)) -> StatusResponse:
+async def get_review(review_id: str, service: AbstractReviewService = Depends(get_service)) -> StatusResponse:
     data: dict[str, Any] = service.get_review_session(review_id)
     try:
         issues_count = len(data.get("issues") or []) if isinstance(data.get("issues"), list) else 0
@@ -73,7 +73,7 @@ async def issue_dialog(
     review_id: str,
     issue_id: str,
     req: DialogRequest,
-    service: ReviewServiceBase = Depends(get_service),
+    service: AbstractReviewService = Depends(get_service),
 ) -> DialogResponse:
     issue = service.find_issue(review_id, issue_id)
     if issue is None:
@@ -86,7 +86,7 @@ async def issue_dialog(
 async def issue_suggest(
     review_id: str,
     issue_id: str,
-    service: ReviewServiceBase = Depends(get_service),
+    service: AbstractReviewService = Depends(get_service),
 ) -> SuggestResponse:
     issue = service.find_issue(review_id, issue_id)
     target_text = issue.original_text if issue else "(対象テキスト未取得)"
@@ -104,7 +104,7 @@ async def issue_suggest(
 async def issue_apply_suggestion(
     review_id: str,
     issue_id: str,
-    service: ReviewServiceBase = Depends(get_service),
+    service: AbstractReviewService = Depends(get_service),
 ) -> ApplySuggestionResponse:
     _ = (review_id, issue_id, service)
     return ApplySuggestionResponse(status="success")
