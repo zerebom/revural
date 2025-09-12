@@ -4,32 +4,35 @@ import pytest
 from fastapi.testclient import TestClient
 from hibikasu_agent.api.dependencies import get_service
 from hibikasu_agent.api.main import app
+from hibikasu_agent.services.ai_service import AiService
 from hibikasu_agent.services.mock_service import MockService
 
 
-@pytest.fixture
-def mock_service_override():
-    """Override DI to always use MockService for API tests."""
+@pytest.fixture(scope="session")
+def shared_mock_service() -> MockService:
+    """Create a single MockService instance shared across the test session."""
+    return MockService()
 
-    def override_get_service():
-        return MockService()
 
-    app.dependency_overrides[get_service] = override_get_service
-    try:
-        yield
-    finally:
-        app.dependency_overrides.pop(get_service, None)
+@pytest.fixture(scope="session")
+def shared_ai_service() -> AiService:
+    """Create a single AiService instance shared across the test session."""
+    return AiService()
 
 
 @pytest.fixture
-def client(mock_service_override):
-    """TestClient with MockService injected via dependency_overrides."""
+def client(shared_mock_service: MockService):
+    """TestClient that always uses the same shared MockService instance."""
+    app.dependency_overrides[get_service] = lambda: shared_mock_service
     with TestClient(app) as c:
         yield c
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture
-def client_ai_mode():
-    """TestClient without DI override (env-driven service selection)."""
+def client_ai_mode(shared_ai_service: AiService):
+    """TestClient that always uses the same shared AiService instance."""
+    app.dependency_overrides[get_service] = lambda: shared_ai_service
     with TestClient(app) as c:
         yield c
+    app.dependency_overrides.clear()

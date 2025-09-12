@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import threading
+import time
+import uuid
 from typing import Any, cast
 
-from hibikasu_agent.api.schemas import Issue
+from hibikasu_agent.api.schemas import Issue, IssueSpan
 from hibikasu_agent.services.base import AbstractReviewService
 from hibikasu_agent.services.models import ReviewRuntimeSession
 from hibikasu_agent.services.providers import adk
@@ -26,9 +29,6 @@ class AiService(AbstractReviewService):
         return self._reviews
 
     def new_review_session(self, prd_text: str, panel_type: str | None = None) -> str:
-        import time
-        import uuid
-
         review_id = str(uuid.uuid4())
         self._reviews[review_id] = ReviewRuntimeSession(
             created_at=time.time(),
@@ -58,8 +58,6 @@ class AiService(AbstractReviewService):
     def _enrich_issue_spans(self, prd_text: str, issues: list[Issue] | None) -> int:
         if not issues:
             return 0
-        from hibikasu_agent.api.schemas import IssueSpan
-
         added = 0
         for iss in issues:
             try:
@@ -95,8 +93,6 @@ class AiService(AbstractReviewService):
         review_id = self.new_review_session(prd_text, panel_type)
         # Start compute on a background thread to avoid blocking
         try:
-            import threading
-
             threading.Thread(target=self.kickoff_compute, args=(review_id,), daemon=True).start()
         except Exception:  # nosec B110
             # Fallback to synchronous compute

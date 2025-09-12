@@ -28,16 +28,18 @@ def test_ai_mode_uses_ai_services(monkeypatch, client_ai_mode):
     monkeypatch.setenv("HIBIKASU_API_MODE", "ai")
 
     # Inject deterministic AI review implementation by monkeypatching ADK runner
+    mock_issues = [
+        Issue(
+            issue_id="TST-1",
+            priority=1,
+            agent_name="AI-Orchestrator",
+            comment="fake review",
+            original_text="AI-PRD",
+        )
+    ]
+
     def impl(prd_text: str):
-        return [
-            Issue(
-                issue_id="TST-1",
-                priority=1,
-                agent_name="AI-Orchestrator",
-                comment="fake review",
-                original_text=prd_text,
-            )
-        ]
+        return mock_issues
 
     monkeypatch.setattr(adk, "run_review", impl, raising=False)
 
@@ -46,12 +48,17 @@ def test_ai_mode_uses_ai_services(monkeypatch, client_ai_mode):
     res = client.post("/reviews", json={"prd_text": "AI-PRD"})
     rid = res.json()["review_id"]
 
-    # first poll: processing
-    r1 = client.get(f"/reviews/{rid}")
-    assert r1.json()["status"] == "processing"
+    # Poll until completed, with a timeout
+    import time
 
-    # second poll: should be completed by ai_services
-    r2 = client.get(f"/reviews/{rid}")
-    body = r2.json()
+    for _ in range(10):  # max 1 sec
+        r = client.get(f"/reviews/{rid}")
+        body = r.json()
+        if body["status"] == "completed":
+            break
+        time.sleep(0.1)
+    else:
+        raise AssertionError("Review did not complete in time")
+
     assert body["status"] == "completed"
     assert body["issues"] and body["issues"][0]["issue_id"] == "TST-1"

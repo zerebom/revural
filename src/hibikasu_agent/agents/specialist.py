@@ -2,6 +2,7 @@
 
 import tomllib
 from pathlib import Path
+from typing import cast
 
 from google.adk.agents import LlmAgent
 from pydantic import BaseModel as PydanticBaseModel
@@ -139,8 +140,6 @@ def create_specialist_from_role(  # noqa: PLR0913
     instr = (role_cfg.get("instruction_review") or "").strip()
 
     # Ensure review uses IssuesResponse schema by default
-    from typing import cast
-
     output_schema_use = cast(type[PydanticBaseModel], IssuesResponse) if output_schema is None else output_schema
 
     return create_specialist(

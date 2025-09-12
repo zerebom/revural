@@ -90,14 +90,7 @@ class MockService(AbstractReviewService):
         sess.status = "completed"
 
     async def start_review_process(self, prd_text: str, panel_type: str | None = None) -> str:
-        """Create a session and kick off computation asynchronously."""
+        """Create a session and compute synchronously."""
         review_id = self.new_review_session(prd_text, panel_type)
-        # fire-and-forget thread to simulate background processing
-        try:
-            import threading
-
-            threading.Thread(target=self.kickoff_compute, args=(review_id,), daemon=True).start()
-        except Exception:
-            # If background kickoff fails, compute synchronously as a fallback
-            self.kickoff_compute(review_id)
+        self.kickoff_compute(review_id)
         return review_id

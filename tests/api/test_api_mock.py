@@ -1,30 +1,22 @@
-from fastapi.testclient import TestClient
-from hibikasu_agent.api.main import app
-
-client = TestClient(app)
+from __future__ import annotations
 
 
-def test_start_review_returns_review_id():
+def test_start_review_returns_review_id(client):
     res = client.post("/reviews", json={"prd_text": "テストPRD"})
     assert res.status_code == 200
     body = res.json()
     assert "review_id" in body and isinstance(body["review_id"], str)
 
 
-def test_polling_transitions_to_completed_and_returns_issues():
+def test_polling_transitions_to_completed_and_returns_issues(client):
     # start
     res = client.post("/reviews", json={"prd_text": "テストPRD"})
     review_id = res.json()["review_id"]
 
-    # first poll -> processing
-    r1 = client.get(f"/reviews/{review_id}")
-    assert r1.status_code == 200
-    assert r1.json()["status"] in ("processing", "completed")
-
-    # second poll -> completed with issues
-    r2 = client.get(f"/reviews/{review_id}")
-    assert r2.status_code == 200
-    data = r2.json()
+    # The mock service completes synchronously
+    r = client.get(f"/reviews/{review_id}")
+    assert r.status_code == 200
+    data = r.json()
     assert data["status"] == "completed"
     assert isinstance(data["issues"], list) and len(data["issues"]) >= 1
     issue_id = data["issues"][0]["issue_id"]

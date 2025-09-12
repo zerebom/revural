@@ -2,6 +2,7 @@
 """Test script for Specialist Agent PRD review."""
 
 import argparse
+import asyncio
 import json
 import sys
 from pathlib import Path
@@ -167,6 +168,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    import asyncio
-
     asyncio.run(main())
