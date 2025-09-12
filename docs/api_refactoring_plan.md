@@ -181,35 +181,58 @@ src/hibikasu_agent/
 
 **目的:** `main.py` を最終的に整理し、責務をアプリケーションの起動のみに限定する。
 
--   [ ] **インターフェース実装の修正:**
-    -   [ ] `MockService` と `AiService` が `AbstractReviewService` のすべての抽象メソッド（特に `kickoff_compute`）を実装するように修正する。
 -   [ ] **ロギング設定のリファクタリング:**
--   [x] `main.py` の `lifespan` 関数内にあるロギング設定ロジックを、`hibikasu_agent.utils.logging_config` に移動し、`lifespan` から呼び出すだけにする。
-    -   [x] `utils/logging_config.py` に `setup_application_logging(level: str)` の関数を新設する。
-    -   [x] `main.py` の `lifespan` 内にあったハンドラ設定などのロジックを `setup_application_logging` に移植する。
-    -   [x] `main.py` の `lifespan` は `setup_application_logging(settings.hibikasu_log_level)` を呼び出すだけの実装にする。
--   [x] `main.py` から不要になったインポート文 (`logging`, `sys` など) を削除する。
+    -   [ ] `main.py` の `lifespan` 関数内にあるロギング設定ロジックを、`hibikasu_agent.utils.logging_config` に移動し、`lifespan` から呼び出すだけにする。
+        -   [ ] `utils/logging_config.py` に `setup_application_logging(level: str)` のような関数を新設する。
+        -   [ ] `main.py` の `lifespan` 内にあったハンドラ設定などのロジックを `setup_application_logging` に移植する。
+        -   [ ] `main.py` の `lifespan` は `setup_application_logging(settings.hibikasu_log_level)` を呼び出すだけの実装にする。
+-   [ ] `main.py` から不要になったインポート文 (`logging`, `sys` など) を削除する。
 -   [ ] 全体の修正後、APIが正常に動作することをテストで確認する。
 
 ---
 
 ### ステップ6: サービス内部実装の改善 (Implementation Details)
 
-**目的:** サービス層のクラス構造が整った後、個々のメソッドの内部実装を改善し、コードの可読性、安全性、テスト容易性をさらに向上させる。
+**目的 (Why):** これまでのステップで整えたクラスの「構造」を基盤に、個々のメソッドの「内部実装」を改善する。これにより、グローバルな状態への依存をなくし、各クラスを自己完結させ、コードの可読性、安全性、そしてテスト容易性を最終的なゴールへと引き上げる。
 
-#### ToDoリスト
--   [ ] **`AiService` の自己完結化:**
-    -   [ ] `runtime.py` のロジック（インメモリキャッシュ、レビュー実行、スパン情報付与など）をすべて `AiService` クラスのメソッドとして移植する。
-    -   [ ] `_review_impl_holder` や `set_review_impl` といったグローバルなDIの仕組みを撤廃し、`AiService` が直接 `adk.py` のレビューパイプラインを呼び出すように修正する。
-    -   [ ] `AiService` が自己完結したクラスになった後、不要になった `runtime.py` を削除する。
--   [ ] **データ構造の厳密化:**
-    -   [ ] レビューセッションの状態を管理するための Pydantic モデル (`ReviewSession`) を定義し、インメモリキャッシュ (`reviews_in_memory`) の型付けを `dict[str, Any]` から `dict[str, ReviewSession]` に変更する。
--   [ ] **メソッドの責務純粋化:**
-    -   [ ] `get_review_session` メソッドから副作用（ポーリング回数のインクリメントなど）を削除し、状態の取得に専念させる。
-    -   [ ] ポーリング回数に依存して返す状態を変えるロジックを削除し、常に現在のセッションステータスを返すように `get_review_session` を修正する。
--   [ ] **エラーハンドリングの改善:**
-    -   [ ] `kickoff_compute` 内の広すぎる `except Exception` を、より具体的なエラー（例: `ValueError`, `KeyError`）の捕捉に修正し、予期せぬエラーをマスクしないようにする。
--   [ ] **ロジックの明確化:**
-    -   [ ] `kickoff_compute` 内の指摘事項 (`Issue`) に `span`情報を付与するロジックを、独立したヘルパー関数に切り出すことを検討する。
+---
+
+#### 1. サービスインターフェースの見直し (What & Why)
+
+- **What**: `kickoff_compute` メソッドを `AbstractReviewService` インターフェースから削除する。その責務を `new_review_session` メソッドに統合し、`start_review_process` のような単一の非同期メソッドへと再設計する。
+- **Why**: 現在の設計では、「レビューの受付」と「レビューの実行開始」という、本来一体であるべき責務が2つのメソッドに分離してしまっている。これらを一つに統合することで、サービスを利用する側（ルーター）のコードがシンプルになり、インターフェースがより直感的になる。
+
+- **ToDo**:
+    -   [ ] `AbstractReviewService` の `kickoff_compute` と `new_review_session` を、`async def start_review_process(...)` という単一の抽象メソッドに置き換える。
+    -   [ ] `AiService` と `MockService` が、この新しい非同期メソッドを正しく実装するように修正する。
+    -   [ ] `api/routers/reviews.py` が、新しい `start_review_process` メソッドを `await` 付きで呼び出すように修正する。
+
+---
+
+#### 2. `AiService` の自己完結化 (What & Why)
+
+- **What**: `runtime.py` が持っているロジックと状態（インメモリキャッシュ）を、すべて `AiService` クラスのメソッドとインスタンス変数として移植する。最終的に `runtime.py` を削除する。
+- **Why**: 現在の `AiService` は `runtime.py` の薄いラッパーであり、ロジックが外部モジュールに分散している。また、`runtime.py` はグローバル変数 (`reviews_in_memory`, `_review_impl_holder`) を多用しており、テストの分離や将来の拡張を困難にしている。ロジックと状態を `AiService` クラス内にカプセル化することで、クラスが自己完結し、オブジェクト指向の恩恵を最大限に享受できる。
+
+- **ToDo**:
+    -   [ ] `AiService` の `__init__` で、`self._reviews_in_memory = {}` のようにインスタンス変数を初期化する。
+    -   [ ] `runtime.py` の `new_review_session`, `get_review_session`, `find_issue`, `kickoff_compute` のロジックを、対応する `AiService` のメソッド内に移植し、グローバル変数ではなく `self._reviews_in_memory` を参照するように書き換える。
+    -   [ ] `_review_impl_holder` や `set_review_impl` といった古いDIの仕組みを完全に撤廃し、`AiService` が `adk.py` のレビューパイプラインを直接インポートして呼び出すように変更する。
+    -   [ ] `AiService` が `runtime.py` に依存しなくなったことを確認し、`runtime.py` ファイルを削除する。
+
+---
+
+#### 3. データ構造の厳密化 (What & Why)
+
+- **What**: レビューセッションの状態を保持するデータ構造を、現在の `dict[str, Any]` から、Pydanticモデル (`ReviewSession`) に変更する。
+- **Why**: `dict[str, Any]` は、どのようなキーが存在し、その値がどの型であるべきかを全く保証しない。これは、typoによる `KeyError` や、予期せぬ `TypeError` の温床となる。Pydanticモデルを導入することで、データ構造がコードとして文書化され、静的解析やIDEの補完が効くようになり、安全性と開発体験が劇的に向上する。
+
+- **ToDo**:
+    -   [ ] `schemas/reviews.py`（あるいは `schemas/common.py`）に、`status`, `issues`, `prd_text` などのフィールドを持つ `ReviewSession(BaseModel)` クラスを定義する。
+    -   [ ] `AiService` と `MockService` のインメモリキャッシュの型ヒントを `dict[str, ReviewSession]` に変更する。
+    -   [ ] `get_review_session` メソッドの戻り値の型ヒントを `dict[str, Any]` から `ReviewSession` に変更し、ルーター側もそれに合わせて修正する。
+
+---
+
 -   [ ] **(その他)**
     -   [ ] リファクタリングの過程で見つかった、その他の内部実装に関する改善点をここに追記する。
