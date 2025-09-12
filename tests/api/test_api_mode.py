@@ -1,16 +1,14 @@
 import os
 
-from fastapi.testclient import TestClient
 from hibikasu_agent.api import ai_services
-from hibikasu_agent.api.main import app
 
 
-def test_default_mode_is_mock(monkeypatch):
+def test_default_mode_is_mock(monkeypatch, client_ai_mode):
     # Ensure default mode (no env) behaves like mock and returns completed by second poll
     monkeypatch.delenv("HIBIKASU_API_MODE", raising=False)
     monkeypatch.delenv("ENABLE_AI", raising=False)
 
-    client = TestClient(app)
+    client = client_ai_mode
 
     res = client.post("/reviews", json={"prd_text": "テストPRD"})
     rid = res.json()["review_id"]
@@ -24,7 +22,7 @@ def test_default_mode_is_mock(monkeypatch):
     assert body["status"] in ("processing", "completed")
 
 
-def test_ai_mode_uses_ai_services(monkeypatch):
+def test_ai_mode_uses_ai_services(monkeypatch, client_ai_mode):
     # Switch to ai mode
     monkeypatch.setenv("HIBIKASU_API_MODE", "ai")
 
@@ -46,7 +44,7 @@ def test_ai_mode_uses_ai_services(monkeypatch):
 
     ai_services.set_review_impl(impl)
 
-    client = TestClient(app)
+    client = client_ai_mode
 
     res = client.post("/reviews", json={"prd_text": "AI-PRD"})
     rid = res.json()["review_id"]

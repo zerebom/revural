@@ -10,7 +10,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from hibikasu_agent.api.routers.reviews import router as reviews_router
 from hibikasu_agent.core.config import settings
-from hibikasu_agent.services.providers.adk import install_default_review_impl
 from hibikasu_agent.utils.logging_config import get_logger, set_log_level
 
 logger = get_logger(__name__)
@@ -37,8 +36,7 @@ async def lifespan(app: FastAPI):  # type: ignore[no-untyped-def]
     except Exception as _err:
         _ = _err
 
-    # Default: delegate ADK-backed review installation to providers layer
-    install_default_review_impl(app)
+    # ADK-backed review installation is handled by providers/DI as needed
 
     yield
 

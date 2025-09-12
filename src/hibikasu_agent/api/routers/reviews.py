@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
+from hibikasu_agent.api.dependencies import get_service
 from hibikasu_agent.api.schemas import (
     ApplySuggestionResponse,
     DialogRequest,
@@ -13,7 +14,7 @@ from hibikasu_agent.api.schemas import (
     StatusResponse,
     SuggestResponse,
 )
-from hibikasu_agent.api.services import get_service
+from hibikasu_agent.services.base import ReviewServiceBase
 from hibikasu_agent.services.providers.adk import answer_dialog as adk_answer_dialog
 from hibikasu_agent.utils.logging_config import get_logger
 
@@ -22,8 +23,12 @@ logger = get_logger(__name__)
 
 
 @router.post("/reviews", response_model=ReviewResponse)
-async def start_review(req: ReviewRequest, background_tasks: BackgroundTasks) -> ReviewResponse:
-    svc = get_service()
+async def start_review(
+    req: ReviewRequest,
+    background_tasks: BackgroundTasks,
+    service: ReviewServiceBase = Depends(get_service),
+) -> ReviewResponse:
+    svc = service
     review_id = svc.new_review_session(req.prd_text, req.panel_type)
     # If AI service provides kickoff, schedule compute asynchronously
     kickoff = getattr(svc, "kickoff_compute", None)
@@ -50,8 +55,8 @@ async def start_review(req: ReviewRequest, background_tasks: BackgroundTasks) ->
 
 
 @router.get("/reviews/{review_id}", response_model=StatusResponse)
-async def get_review(review_id: str) -> StatusResponse:
-    data: dict[str, Any] = get_service().get_review_session(review_id)
+async def get_review(review_id: str, service: ReviewServiceBase = Depends(get_service)) -> StatusResponse:
+    data: dict[str, Any] = service.get_review_session(review_id)
     try:
         issues_count = len(data.get("issues") or []) if isinstance(data.get("issues"), list) else 0
         logger.debug(
@@ -64,8 +69,13 @@ async def get_review(review_id: str) -> StatusResponse:
 
 
 @router.post("/reviews/{review_id}/issues/{issue_id}/dialog", response_model=DialogResponse)
-async def issue_dialog(review_id: str, issue_id: str, req: DialogRequest) -> DialogResponse:
-    issue = get_service().find_issue(review_id, issue_id)
+async def issue_dialog(
+    review_id: str,
+    issue_id: str,
+    req: DialogRequest,
+    service: ReviewServiceBase = Depends(get_service),
+) -> DialogResponse:
+    issue = service.find_issue(review_id, issue_id)
     if issue is None:
         raise HTTPException(status_code=404, detail="Issue not found")
     text = await adk_answer_dialog(review_id, issue_id, req.question_text)
@@ -73,8 +83,12 @@ async def issue_dialog(review_id: str, issue_id: str, req: DialogRequest) -> Dia
 
 
 @router.post("/reviews/{review_id}/issues/{issue_id}/suggest", response_model=SuggestResponse)
-async def issue_suggest(review_id: str, issue_id: str) -> SuggestResponse:
-    issue = get_service().find_issue(review_id, issue_id)
+async def issue_suggest(
+    review_id: str,
+    issue_id: str,
+    service: ReviewServiceBase = Depends(get_service),
+) -> SuggestResponse:
+    issue = service.find_issue(review_id, issue_id)
     target_text = issue.original_text if issue else "(対象テキスト未取得)"
     suggested = (
         "PRDの要件に以下を追記することを推奨します。"
@@ -87,8 +101,10 @@ async def issue_suggest(review_id: str, issue_id: str) -> SuggestResponse:
     "/reviews/{review_id}/issues/{issue_id}/apply_suggestion",
     response_model=ApplySuggestionResponse,
 )
-async def issue_apply_suggestion(review_id: str, issue_id: str) -> ApplySuggestionResponse:
-    _ = issue_id
-    if review_id not in get_service().reviews_in_memory:
-        return ApplySuggestionResponse(status="success")
+async def issue_apply_suggestion(
+    review_id: str,
+    issue_id: str,
+    service: ReviewServiceBase = Depends(get_service),
+) -> ApplySuggestionResponse:
+    _ = (review_id, issue_id, service)
     return ApplySuggestionResponse(status="success")

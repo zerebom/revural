@@ -127,13 +127,13 @@ src/hibikasu_agent/
 - `main.py` から古いDIの仕組みである `install_default_review_impl(app)` の呼び出しは削除される。
 
 #### ToDoリスト
--   [ ] `src/hibikasu_agent/api/dependencies.py` を作成する。
--   [ ] `dependencies.py` に `get_service` 関数を定義する。この関数は、設定に応じて `AiService` または `MockService` のインスタンスを返す責務を持つ。（初期実装では常に `AiService` を返す形でよい）
--   [ ] `api/routers/reviews.py` を修正する。
-    -   [ ] `fastapi` から `Depends` をインポートする。
-    -   [ ] `AiService` のような具象クラスのインポートを削除し、`AbstractReviewService` と `get_service` をインポートする。
-    -   [ ] 各エンドポイント関数の引数に `service: AbstractReviewService = Depends(get_service)` を追加し、サービスインスタンスを注入する形に変更する。
--   [ ] `main.py` から `install_default_review_impl` のインポートと呼び出しを削除する。
+-   [x] `src/hibikasu_agent/api/dependencies.py` を作成する。
+-   [x] `dependencies.py` に `get_service` 関数を定義する。この関数は、設定に応じて `AiService` または `MockService` のインスタンスを返す責務を持つ。（初期実装では常に `AiService` を返す形でよい）
+-   [x] `api/routers/reviews.py` を修正する。
+    -   [x] `fastapi` から `Depends` をインポートする。
+    -   [x] `AiService` のような具象クラスのインポートを削除し、`AbstractReviewService` と `get_service` をインポートする。
+    -   [x] 各エンドポイント関数の引数に `service: AbstractReviewService = Depends(get_service)` を追加し、サービスインスタンスを注入する形に変更する。
+-   [x] `main.py` から `install_default_review_impl` のインポートと呼び出しを削除する。
 
 #### ✅ 成功の確認方法
 1.  **[振る舞い]** リファクタリング後も、APIサーバーが正常に起動し、これまで通り `/reviews` エンドポイントが機能することを確認する。
@@ -156,12 +156,12 @@ src/hibikasu_agent/
 - `AiService` のテストは、独立したサービスクラスのユニットテストとして（必要であれば）別途実装される。
 
 #### ToDoリスト
--   [ ] `tests/api/conftest.py` または各テストファイルの先頭で、`app.dependency_overrides` を設定するロジックを追加する。
-    -   [ ] `MockService` を返すDI関数 (`override_get_service`) を定義する。
-    -   [ ] `app.dependency_overrides[get_service] = override_get_service` のようにして、テスト実行時にDIを上書きする。
--   [ ] `tests/api/test_reviews_endpoints.py` を修正する。
-    -   [ ] テストのアサーションを、`MockService` が返すダミーデータに基づいて検証するように書き換える。
-    -   [ ] AIモデルの不安定な挙動に依存するテスト（例: 2回ポーリングして `completed` になることを期待する部分）を、より確実なアサーションに修正する。
+-   [x] `tests/api/conftest.py` を追加し、`app.dependency_overrides` を設定/解除するフィクスチャを提供する。
+    -   [x] `override_get_service` 相当（`mock_service_override`）を定義し、常に `MockService` を返す。
+    -   [x] `client` フィクスチャ（MockService適用）、`client_ai_mode` フィクスチャ（DI未上書き）を提供する。
+-   [x] `tests/api/test_reviews_endpoints.py` を修正する。
+    -   [x] `client` フィクスチャを使用する形に変更し、アサーションはモックのダミーデータに基づく検証にする。
+    -   [x] AIモデルの不安定な挙動に依存する前提を排し、確実なアサーションへ修正。
 
 ---
 
@@ -182,7 +182,10 @@ src/hibikasu_agent/
 **目的:** `main.py` を最終的に整理し、責務をアプリケーションの起動のみに限定する。
 
 -   [ ] `main.py` の `lifespan` 関数内にあるロギング設定ロジックを、`hibikasu_agent.utils.logging_config` に移動し、`lifespan` から呼び出すだけにする。
--   [ ] `main.py` から不要になったインポート文を削除する。
+    -   [ ] `utils/logging_config.py` に `setup_application_logging(level: str)` のような関数を新設する。
+    -   [ ] `main.py` の `lifespan` 内にあったハンドラ設定などのロジックを `setup_application_logging` に移植する。
+    -   [ ] `main.py` の `lifespan` は `setup_application_logging(settings.hibikasu_log_level)` を呼び出すだけの実装にする。
+-   [ ] `main.py` から不要になったインポート文 (`logging`, `sys` など) を削除する。
 -   [ ] 全体の修正後、APIが正常に動作することをテストで確認する。
 
 ---
