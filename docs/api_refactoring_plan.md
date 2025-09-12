@@ -63,12 +63,12 @@ src/hibikasu_agent/
 - 環境変数の追加や変更は `config.py` の修正のみで完結する。
 
 #### ToDoリスト
--   [ ] `src/hibikasu_agent/core/` ディレクトリを作成する。
--   [ ] `src/hibikasu_agent/core/config.py` を作成する。
--   [ ] `config.py` 内に、`pydantic_settings.BaseSettings` を継承した `Settings` クラスを定義する。
+-   [x] `src/hibikasu_agent/core/` ディレクトリを作成する。
+-   [x] `src/hibikasu_agent/core/config.py` を作成する。
+-   [x] `config.py` 内に、`pydantic_settings.BaseSettings` を継承した `Settings` クラスを定義する。
     -   `CORS_ALLOW_ORIGINS` や `HIBIKASU_LOG_LEVEL` などの環境変数をフィールドとして定義する。
--   [ ] `main.py` にあったCORSオリジンを決定するロジック (`_allowed_origins_from_env` など) を `Settings` クラス内に移動または `config.py` 内の関数として再実装する。
--   [ ] `main.py` が `core.config` から設定を読み込むように修正する。
+-   [x] `main.py` にあったCORSオリジンを決定するロジック (`_allowed_origins_from_env` など) を `Settings` クラス内に移動または `config.py` 内の関数として再実装する。
+-   [x] `main.py` が `core.config` から設定を読み込むように修正する。
 
 #### ✅ 成功の確認方法
 1.  **[振る舞い]** リファクタリング後も、APIサーバーが正常に起動し、CORSエラーなどが発生せず、これまで通りフロントエンドからアクセスできることを確認する。
@@ -80,26 +80,88 @@ src/hibikasu_agent/
 
 **目的:** ビジネスロジックを担うサービス層をAPI層から独立させ、インターフェースを定義する。
 
--   [ ] `src/hibikasu_agent/services/` ディレクトリを作成する。
--   [ ] 既存の `src/hibikasu_agent/api/services/` ディレクトリの中身 (`ai.py`, `base.py`, `mock.py`) を `src/hibikasu_agent/services/` に移動する。
--   [ ] `services/base.py` を修正し、`ReviewServiceBase` のような抽象基底クラス (ABC) を定義する。
-    -   `new_review_session`, `get_review_session`, `find_issue` などのメソッドシグネチャを `@abstractmethod` で定義する。
--   [ ] `services/ai.py` と `services/mock.py` のクラス名をそれぞれ `AiService`, `MockService` に変更し、`ReviewServiceBase` を継承させる。
--   [ ] 古い `src/hibikasu_agent/api/services/` ディレクトリを削除する。
+#### As-Is (現状)
+- `src/hibikasu_agent/api/services/` と `src/hibikasu_agent/services/` という2つの `services` ディレクトリが混在し、責務が曖昧。
+- `api/services/base.py` のインターフェース定義 (`ReviewService`) が `TypedDict` であり、実装の継承による規約になっていない。
+- `api/services/mock.py` が存在するものの、未使用で「トマソン」化している。
+- ビジネスロジック (`runtime.py`) がAPI層のすぐ下 (`api/services`) をインポートしており、レイヤー構造が逆転しかけている。
+
+#### To-Be (理想形)
+- `services` ディレクトリは `src/hibikasu_agent/services/` に統一され、FastAPIなどのWebフレームワークから独立した純粋なビジネスロジック層となる。
+- `services/base.py` に、`abc` モジュールを使った抽象基底クラス `AbstractReviewService` が定義され、実装すべきメソッドが `@abstractmethod` で明確化される。
+- `services/ai_service.py` (旧`runtime.py`) と `services/mock_service.py` (旧`mock.py`) が `AbstractReviewService` を継承し、同じインターフェースを持つことが保証される。
+- 古い `src/hibikasu_agent/api/services/` ディレクトリは完全に削除される。
+
+#### ToDoリスト
+-   [x] `src/hibikasu_agent/services/` の下に `base.py`, `ai_service.py`, `mock_service.py` を作成する。
+-   [x] `services/base.py` に `AbstractReviewService(ABC)` を定義し、`@abstractmethod` を使ってサービスメソッドのインターフェースを宣言する。
+    -   `new_review_session`, `get_review_session`, `find_issue`, `kickoff_compute` などの主要メソッドを定義する。
+-   [x] `services/ai_service.py` に `AiReviewService(AbstractReviewService)` クラスを作成し、既存の `services/runtime.py` と `api/services/ai.py` のロジックを移植・統合する。
+-   [x] `services/mock_service.py` に `MockReviewService(AbstractReviewService)` クラスを作成し、既存の `api/services/mock.py` のロジックを移植する。
+-   [x] ルーター (`api/routers/reviews.py`) など、サービスをインポートしている箇所のパスを新しい `services` モジュール (`hibikasu_agent.services.ai_service` など) に修正する。
+-   [x] アプリケーションが新しいサービス層で正常に動作することを確認する。
+-   [x] 不要になった `src/hibikasu_agent/api/services/` ディレクトリを削除する。
+-   [x] 不要になった `src/hibikasu_agent/services/runtime.py` を削除する。
+
+#### ✅ 成功の確認方法
+1. **[振る舞い]** リファクタリング後も、APIサーバーが正常に起動し、`POST /reviews` などの主要な機能が以前と同様に動作することを確認する。
+2. **[コード]** `src/hibikasu_agent/api/services/` ディレクトリが存在しないことを確認する。`AiReviewService` と `MockReviewService` が `AbstractReviewService` を継承しており、メソッドシグネチャが一致していることを確認する。
+3. **[テスト]** `MockReviewService` を対象とした新しい単体テストが追加され、パスすること。具体的には、セッションの作成 (`new`) → 状態取得 (`get`) → 指摘事項の検索 (`find`) という一連の流れが正しく機能することを確認するテスト。
 
 ---
 
 ### ステップ3: 依存性注入の導入 (Decoupling)
 
-**目的:** FastAPIのDI（依存性注入）システムを利用して、ルーターとサービス層を疎結合にする。
+**目的:** FastAPIのDI（依存性注入）システムを利用して、ルーターとサービス層を疎結合にする。これにより、テスト時にモック実装へ差し替えることが極めて容易になる。
 
+#### As-Is (現状)
+- ルーター (`api/routers/reviews.py`) が `AiService` のような具体的な実装クラスを直接インポートし、エンドポイント関数内でインスタンス化している。
+- どのサービス実装（AIかモックか）を使うかが、ルーターのコードにハードコードされている。
+- `main.py` に `install_default_review_impl(app)` という古いDIの仕組みが残っている。
+
+#### To-Be (理想形)
+- `api/dependencies.py` に、設定に応じて `AiService` または `MockService` のインスタンスを返す `get_service` DI関数が定義される。
+- ルーターは、具象クラスをインポートせず、`AbstractReviewService` インターフェースと `get_service` DI関数のみに依存する。
+- 各エンドポイントは、`Depends(get_service)` を通じて、FastAPIから自動的にサービスインスタンスが引数として**注入**される。
+- ルーターは注入された `service` オブジェクトの実装を意識することなく、インターフェースで定義されたメソッドのみを呼び出す。
+- `main.py` から古いDIの仕組みである `install_default_review_impl(app)` の呼び出しは削除される。
+
+#### ToDoリスト
 -   [ ] `src/hibikasu_agent/api/dependencies.py` を作成する。
--   [ ] `dependencies.py` に `get_service` 関数を定義する。
-    -   この関数は `core.config` の設定を読み、`AiService` または `MockService` のインスタンスを返す責務を持つ。
--   [ ] `api/routers/reviews.py` の各エンドポイントを修正する。
-    -   `get_service()` の直接呼び出しをやめる。
-    -   関数の引数に `service: ReviewServiceBase = Depends(get_service)` を追加し、サービスインスタンスを注入する形に変更する。
--   [ ] `main.py` から `install_default_review_impl` の呼び出しを削除する（DIに責務が移譲されるため）。
+-   [ ] `dependencies.py` に `get_service` 関数を定義する。この関数は、設定に応じて `AiService` または `MockService` のインスタンスを返す責務を持つ。（初期実装では常に `AiService` を返す形でよい）
+-   [ ] `api/routers/reviews.py` を修正する。
+    -   [ ] `fastapi` から `Depends` をインポートする。
+    -   [ ] `AiService` のような具象クラスのインポートを削除し、`AbstractReviewService` と `get_service` をインポートする。
+    -   [ ] 各エンドポイント関数の引数に `service: AbstractReviewService = Depends(get_service)` を追加し、サービスインスタンスを注入する形に変更する。
+-   [ ] `main.py` から `install_default_review_impl` のインポートと呼び出しを削除する。
+
+#### ✅ 成功の確認方法
+1.  **[振る舞い]** リファクタリング後も、APIサーバーが正常に起動し、これまで通り `/reviews` エンドポイントが機能することを確認する。
+2.  **[コード]** `api/routers/reviews.py` に `AiService` や `MockService` への直接のインポート文が存在しないことを確認する。エンドポイントのシグネチャに `Depends(get_service)` が含まれていることを確認する。
+3.  **[テスト]** （発展）FastAPIの `app.dependency_overrides` を使って、テスト時に `get_service` を `MockService` を返す関数に差し替えることができるか確認する。
+
+---
+
+### ステップ3.5: テストのリファクタリング (Decoupling Tests)
+
+**目的**: DI導入のメリットを最大限に活かし、API層のテストをサービス層から分離する。これにより、高速で安定し、関心事が明確なユニットテストを実現する。
+
+#### As-Is (現状)
+- APIのテスト (`tests/api/test_reviews_endpoints.py`) が、`TestClient` を通じてアプリケーション全体を起動し、デフォルトの `AiService` に依存してしまっている。
+- テストが遅く、不安定になる可能性があり、API層だけの振る舞いを検証することが難しい。
+
+#### To-Be (理想形)
+- APIのテスト実行時には、FastAPIの `app.dependency_overrides` を使って、`get_service` 依存性が常に `MockService` を返すように上書きされる。
+- テストは `MockService` の高速かつ予測可能なレスポンスを前提に書かれ、API層のロジック（リクエストの検証、適切なサービスの呼び出し、レスポンスの整形など）のみを検証することに集中できる。
+- `AiService` のテストは、独立したサービスクラスのユニットテストとして（必要であれば）別途実装される。
+
+#### ToDoリスト
+-   [ ] `tests/api/conftest.py` または各テストファイルの先頭で、`app.dependency_overrides` を設定するロジックを追加する。
+    -   [ ] `MockService` を返すDI関数 (`override_get_service`) を定義する。
+    -   [ ] `app.dependency_overrides[get_service] = override_get_service` のようにして、テスト実行時にDIを上書きする。
+-   [ ] `tests/api/test_reviews_endpoints.py` を修正する。
+    -   [ ] テストのアサーションを、`MockService` が返すダミーデータに基づいて検証するように書き換える。
+    -   [ ] AIモデルの不安定な挙動に依存するテスト（例: 2回ポーリングして `completed` になることを期待する部分）を、より確実なアサーションに修正する。
 
 ---
 
@@ -122,3 +184,22 @@ src/hibikasu_agent/
 -   [ ] `main.py` の `lifespan` 関数内にあるロギング設定ロジックを、`hibikasu_agent.utils.logging_config` に移動し、`lifespan` から呼び出すだけにする。
 -   [ ] `main.py` から不要になったインポート文を削除する。
 -   [ ] 全体の修正後、APIが正常に動作することをテストで確認する。
+
+---
+
+### ステップ6: サービス内部実装の改善 (Implementation Details)
+
+**目的:** サービス層のクラス構造が整った後、個々のメソッドの内部実装を改善し、コードの可読性、安全性、テスト容易性をさらに向上させる。
+
+#### ToDoリスト
+-   [ ] **データ構造の厳密化:**
+    -   [ ] レビューセッションの状態を管理するための Pydantic モデル (`ReviewSession`) を定義し、インメモリキャッシュ (`reviews_in_memory`) の型付けを `dict[str, Any]` から `dict[str, ReviewSession]` に変更する。
+-   [ ] **メソッドの責務純粋化:**
+    -   [ ] `get_review_session` メソッドから副作用（ポーリング回数のインクリメントなど）を削除し、状態の取得に専念させる。
+    -   [ ] ポーリング回数に依存して返す状態を変えるロジックを削除し、常に現在のセッションステータスを返すように `get_review_session` を修正する。
+-   [ ] **エラーハンドリングの改善:**
+    -   [ ] `kickoff_compute` 内の広すぎる `except Exception` を、より具体的なエラー（例: `ValueError`, `KeyError`）の捕捉に修正し、予期せぬエラーをマスクしないようにする。
+-   [ ] **ロジックの明確化:**
+    -   [ ] `kickoff_compute` 内の指摘事項 (`Issue`) に `span`情報を付与するロジックを、独立したヘルパー関数に切り出すことを検討する。
+-   [ ] **(その他)**
+    -   [ ] リファクタリングの過程で見つかった、その他の内部実装に関する改善点をここに追記する。

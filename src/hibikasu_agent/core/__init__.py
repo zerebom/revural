@@ -1,1 +1,1 @@
-"""Core module for project_name package."""
+"""Core utilities and configuration for hibikasu_agent."""

@@ -192,12 +192,10 @@ async def answer_dialog(review_id: str, issue_id: str, question_text: str) -> st
 
             final_text = ""
             async for event in runner.run_async(user_id="dialog_user", session_id=session_id, new_message=content):
-                if (
-                    getattr(event, "is_final_response", lambda: False)()
-                    and getattr(event, "content", None)
-                    and event.content.parts
-                ):
-                    final_text = event.content.parts[0].text or ""
+                if getattr(event, "is_final_response", lambda: False)() and getattr(event, "content", None):
+                    event_content = getattr(event, "content", None)
+                    if event_content and hasattr(event_content, "parts") and event_content.parts:
+                        final_text = event_content.parts[0].text or ""
             return final_text or "回答を生成できませんでした。"
 
         return await _run_once()
