@@ -173,3 +173,27 @@ def set_log_level(logger: logging.Logger, level: str) -> None:
     """
     numeric_level = getattr(logging, level.upper(), logging.INFO)
     logger.setLevel(numeric_level)
+
+
+def setup_application_logging(level: str = "INFO") -> None:
+    """Configure package-level logging for `hibikasu_agent`.
+
+    - Sets the `hibikasu_agent` logger level.
+    - Ensures a StreamHandler to stdout exists even when the root logger
+      has no handlers (e.g., certain uvicorn configurations).
+    - Prevents duplicate emission via root by disabling propagation.
+    """
+    try:
+        pkg_logger = logging.getLogger("hibikasu_agent")
+        set_log_level(pkg_logger, level)
+        if not pkg_logger.handlers:
+            handler = logging.StreamHandler(sys.stdout)
+            numeric_level = getattr(logging, level.upper(), logging.INFO)
+            handler.setLevel(numeric_level)
+            formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+            handler.setFormatter(formatter)
+            pkg_logger.addHandler(handler)
+            pkg_logger.propagate = False
+    except Exception:  # nosec B110
+        # Avoid failing app startup due to logging configuration
+        pass

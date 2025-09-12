@@ -4,14 +4,14 @@ from typing import Any
 
 from hibikasu_agent.api.schemas import Issue
 from hibikasu_agent.services import runtime as ai_runtime
-from hibikasu_agent.services.base import ReviewServiceBase
+from hibikasu_agent.services.base import AbstractReviewService
 
 
-class AiService(ReviewServiceBase):
+class AiService(AbstractReviewService):
     """AI-backed review service using the existing runtime module.
 
     This class adapts the module-level runtime functions to the
-    ReviewServiceBase interface for DI-friendly usage.
+    AbstractReviewService interface for DI-friendly usage.
     """
 
     def new_review_session(self, prd_text: str, panel_type: str | None = None) -> str:

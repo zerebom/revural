@@ -8,9 +8,3 @@ migration is complete.
 """
 
 from __future__ import annotations
-
-from hibikasu_agent.services import runtime as ai_service
-
-
-def get_service():  # runtime provides module-level functions used by routers
-    return ai_service

@@ -4,7 +4,7 @@ import os
 from functools import lru_cache
 
 from hibikasu_agent.services.ai_service import AiService
-from hibikasu_agent.services.base import ReviewServiceBase
+from hibikasu_agent.services.base import AbstractReviewService
 from hibikasu_agent.services.mock_service import MockService
 
 
@@ -14,7 +14,7 @@ def _use_ai_mode() -> bool:
 
 
 @lru_cache(maxsize=2)
-def get_service() -> ReviewServiceBase:
+def get_service() -> AbstractReviewService:
     """Provide a review service instance based on environment configuration.
 
     - ai mode: AiService (runtime-backed, ADK-integrated via providers)

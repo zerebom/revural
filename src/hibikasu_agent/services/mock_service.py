@@ -5,10 +5,10 @@ import uuid
 from typing import Any, cast
 
 from hibikasu_agent.api.schemas import Issue, IssueSpan
-from hibikasu_agent.services.base import ReviewServiceBase
+from hibikasu_agent.services.base import AbstractReviewService
 
 
-class MockService(ReviewServiceBase):
+class MockService(AbstractReviewService):
     """Simple in-memory mock review service for local/dev use."""
 
     def __init__(self) -> None:
