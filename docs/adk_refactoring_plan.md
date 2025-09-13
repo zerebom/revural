@@ -202,12 +202,12 @@ graph TD
 
 #### To-Be (理想形)
 - FastAPIアプリケーションのライフサイクル (`lifespan`) 内で `ADKService` のシングルトンインスタンスが生成される。
-- `dependencies.py` の `get_service` が、このシングルトン `ADKService` インスタンスを使って `AiService` を初期化し、提供する。
+- `dependencies.py` の `get_review_service` が、このシングルトン `ADKService` インスタンスを使って `AiService` を初期化し、提供する。
 
 #### ToDoリスト
 -   [ ] `api/main.py` の `lifespan` コンテキストマネージャーを修正する。（あるいは、`dependencies.py` にシングルトン管理の仕組みを構築する）
     -   [ ] アプリケーション起動時に `ADKService` のインスタンスを一度だけ作成し、`app.state.adk_service` のようにFastAPIアプリケーションの状態として保持する。
--   [ ] `api/dependencies.py` の `get_service` 関数を修正する。
+-   [ ] `api/dependencies.py` の `get_review_service` 関数を修正する。
     -   [ ] `Request` オブジェクト経由で `app.state.adk_service` を取得する。
     -   [ ] 取得した `adk_service` を使って `AiService` をインスタンス化して返すようにする。
         （*注意: `AiService` 自体もシングルトンとして管理する方が効率的かもしれないため、実装時に検討する*）

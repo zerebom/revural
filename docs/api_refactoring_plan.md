@@ -120,25 +120,25 @@ src/hibikasu_agent/
 - `main.py` に `install_default_review_impl(app)` という古いDIの仕組みが残っている。
 
 #### To-Be (理想形)
-- `api/dependencies.py` に、設定に応じて `AiService` または `MockService` のインスタンスを返す `get_service` DI関数が定義される。
-- ルーターは、具象クラスをインポートせず、`AbstractReviewService` インターフェースと `get_service` DI関数のみに依存する。
-- 各エンドポイントは、`Depends(get_service)` を通じて、FastAPIから自動的にサービスインスタンスが引数として**注入**される。
+- `api/dependencies.py` に、設定に応じて `AiService` または `MockService` のインスタンスを返す `get_review_service` DI関数が定義される。
+- ルーターは、具象クラスをインポートせず、`AbstractReviewService` インターフェースと `get_review_service` DI関数のみに依存する。
+- 各エンドポイントは、`Depends(get_review_service)` を通じて、FastAPIから自動的にサービスインスタンスが引数として**注入**される。
 - ルーターは注入された `service` オブジェクトの実装を意識することなく、インターフェースで定義されたメソッドのみを呼び出す。
 - `main.py` から古いDIの仕組みである `install_default_review_impl(app)` の呼び出しは削除される。
 
 #### ToDoリスト
 -   [x] `src/hibikasu_agent/api/dependencies.py` を作成する。
--   [x] `dependencies.py` に `get_service` 関数を定義する。この関数は、設定に応じて `AiService` または `MockService` のインスタンスを返す責務を持つ。（初期実装では常に `AiService` を返す形でよい）
+-   [x] `dependencies.py` に `get_review_service` 関数を定義する。この関数は、設定に応じて `AiService` または `MockService` のインスタンスを返す責務を持つ。（初期実装では常に `AiService` を返す形でよい）
 -   [x] `api/routers/reviews.py` を修正する。
     -   [x] `fastapi` から `Depends` をインポートする。
-    -   [x] `AiService` のような具象クラスのインポートを削除し、`AbstractReviewService` と `get_service` をインポートする。
-    -   [x] 各エンドポイント関数の引数に `service: AbstractReviewService = Depends(get_service)` を追加し、サービスインスタンスを注入する形に変更する。
+    -   [x] `AiService` のような具象クラスのインポートを削除し、`AbstractReviewService` と `get_review_service` をインポートする。
+    -   [x] 各エンドポイント関数の引数に `service: AbstractReviewService = Depends(get_review_service)` を追加し、サービスインスタンスを注入する形に変更する。
 -   [x] `main.py` から `install_default_review_impl` のインポートと呼び出しを削除する。
 
 #### ✅ 成功の確認方法
 1.  **[振る舞い]** リファクタリング後も、APIサーバーが正常に起動し、これまで通り `/reviews` エンドポイントが機能することを確認する。
-2.  **[コード]** `api/routers/reviews.py` に `AiService` や `MockService` への直接のインポート文が存在しないことを確認する。エンドポイントのシグネチャに `Depends(get_service)` が含まれていることを確認する。
-3.  **[テスト]** （発展）FastAPIの `app.dependency_overrides` を使って、テスト時に `get_service` を `MockService` を返す関数に差し替えることができるか確認する。
+2.  **[コード]** `api/routers/reviews.py` に `AiService` や `MockService` への直接のインポート文が存在しないことを確認する。エンドポイントのシグネチャに `Depends(get_review_service)` が含まれていることを確認する。
+3.  **[テスト]** （発展）FastAPIの `app.dependency_overrides` を使って、テスト時に `get_review_service` を `MockService` を返す関数に差し替えることができるか確認する。
 
 ---
 
@@ -151,13 +151,13 @@ src/hibikasu_agent/
 - テストが遅く、不安定になる可能性があり、API層だけの振る舞いを検証することが難しい。
 
 #### To-Be (理想形)
-- APIのテスト実行時には、FastAPIの `app.dependency_overrides` を使って、`get_service` 依存性が常に `MockService` を返すように上書きされる。
+- APIのテスト実行時には、FastAPIの `app.dependency_overrides` を使って、`get_review_service` 依存性が常に `MockService` を返すように上書きされる。
 - テストは `MockService` の高速かつ予測可能なレスポンスを前提に書かれ、API層のロジック（リクエストの検証、適切なサービスの呼び出し、レスポンスの整形など）のみを検証することに集中できる。
 - `AiService` のテストは、独立したサービスクラスのユニットテストとして（必要であれば）別途実装される。
 
 #### ToDoリスト
 -   [x] `tests/api/conftest.py` を追加し、`app.dependency_overrides` を設定/解除するフィクスチャを提供する。
-    -   [x] `override_get_service` 相当（`mock_service_override`）を定義し、常に `MockService` を返す。
+    -   [x] `override_get_review_service` 相当（`mock_service_override`）を定義し、常に `MockService` を返す。
     -   [x] `client` フィクスチャ（MockService適用）、`client_ai_mode` フィクスチャ（DI未上書き）を提供する。
 -   [x] `tests/api/test_reviews_endpoints.py` を修正する。
     -   [x] `client` フィクスチャを使用する形に変更し、アサーションはモックのダミーデータに基づく検証にする。

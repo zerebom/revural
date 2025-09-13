@@ -16,8 +16,29 @@ def shared_mock_service() -> MockService:
 
 @pytest.fixture(scope="session")
 def shared_ai_service() -> AiService:
-    """Create a single AiService instance shared across the test session."""
-    return AiService()
+    """Create a single AiService instance shared across the test session.
+
+    Use a minimal stub ADK provider to avoid external calls.
+    """
+
+    class _StubADK:
+        async def run_review_async(self, prd_text: str):  # type: ignore[no-untyped-def]
+            from hibikasu_agent.api.schemas import Issue
+
+            return [
+                Issue(
+                    issue_id="STUB-1",
+                    priority=1,
+                    agent_name="AI-Orchestrator",
+                    comment="stubbed review",
+                    original_text=prd_text,
+                )
+            ]
+
+        async def answer_dialog_async(self, issue, question_text: str):  # type: ignore[no-untyped-def]
+            return f"(stub) {question_text}"
+
+    return AiService(adk_service=_StubADK())
 
 
 @pytest.fixture

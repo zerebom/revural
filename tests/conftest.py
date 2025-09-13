@@ -12,7 +12,7 @@ from collections.abc import Generator
 
 import pytest
 from hibikasu_agent.api.schemas import Issue
-from hibikasu_agent.services.providers import adk
+from hibikasu_agent.services.providers.adk import ADKService
 
 
 @pytest.fixture(autouse=True)
@@ -22,7 +22,7 @@ def inject_fake_ai_impl(monkeypatch) -> Generator[None, None, None]:
     Monkeypatch the ADK pipeline entry to return deterministic issues.
     """
 
-    def impl(prd_text: str):
+    async def impl_async(self, prd_text: str):  # type: ignore[no-untyped-def]
         return [
             Issue(
                 issue_id="TST-1",
@@ -33,7 +33,8 @@ def inject_fake_ai_impl(monkeypatch) -> Generator[None, None, None]:
             )
         ]
 
-    monkeypatch.setattr(adk, "run_review", impl, raising=False)
+    # Patch the provider's async review method (used in AiService)
+    monkeypatch.setattr(ADKService, "run_review_async", impl_async, raising=False)
     try:
         yield
     finally:
