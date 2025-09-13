@@ -70,13 +70,13 @@ class MockService(AbstractReviewService):
                 return issue
         return None
 
-    def kickoff_compute(self, review_id: str) -> None:
+    def kickoff_review(self, review_id: str) -> None:
+        """同期実行。モックでは即時に完了させる。"""
         sess = self._store.get(review_id)
         if not sess or sess.issues is not None:
             return
         prd_text = sess.prd_text
         issues = self._dummy_issues(prd_text)
-        # Enrich spans
         for iss in issues:
             if iss.span is not None:
                 continue
@@ -89,8 +89,12 @@ class MockService(AbstractReviewService):
         sess.issues = issues
         sess.status = "completed"
 
-    async def start_review_process(self, prd_text: str, panel_type: str | None = None) -> str:
-        """Create a session and compute synchronously."""
-        review_id = self.new_review_session(prd_text, panel_type)
-        self.kickoff_compute(review_id)
-        return review_id
+    async def answer_dialog(self, review_id: str, issue_id: str, question_text: str) -> str:
+        issue = self.find_issue(review_id, issue_id)
+        if not issue:
+            return "該当する論点が見つかりませんでした。"
+        # 簡易モック応答（AIを使わない）
+        return (
+            f"（モック回答）『{issue.original_text}』に関するご質問: {question_text}\n"
+            "まずは要件の明確化と簡易な対策から検討してください。"
+        )

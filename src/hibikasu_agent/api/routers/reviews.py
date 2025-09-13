@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
 from hibikasu_agent.api.dependencies import get_service
 from hibikasu_agent.api.schemas import (
@@ -15,7 +15,6 @@ from hibikasu_agent.api.schemas import (
     SuggestResponse,
 )
 from hibikasu_agent.services.base import AbstractReviewService
-from hibikasu_agent.services.providers.adk import answer_dialog_from_issue as adk_answer_dialog
 from hibikasu_agent.utils.logging_config import get_logger
 
 router = APIRouter()
@@ -25,9 +24,13 @@ logger = get_logger(__name__)
 @router.post("/reviews", response_model=ReviewResponse)
 async def start_review(
     req: ReviewRequest,
+    background_tasks: BackgroundTasks,
     service: AbstractReviewService = Depends(get_service),
 ) -> ReviewResponse:
-    review_id = await service.start_review_process(req.prd_text, req.panel_type)
+    # 1) セッションだけ先に作成（同期）
+    review_id = service.new_review_session(req.prd_text, req.panel_type)
+    # 2) 重い計算はバックグラウンドへ（同期ラッパーを登録）
+    background_tasks.add_task(service.kickoff_review, review_id=review_id)
     logger.info(
         "start_review accepted",
         extra={"review_id": review_id, "panel_type": req.panel_type or "", "prd_len": len(req.prd_text or "")},
@@ -59,7 +62,7 @@ async def issue_dialog(
     issue = service.find_issue(review_id, issue_id)
     if issue is None:
         raise HTTPException(status_code=404, detail="Issue not found")
-    text = await adk_answer_dialog(issue, req.question_text)
+    text = await service.answer_dialog(review_id, issue_id, req.question_text)
     return DialogResponse(response_text=text)
 
 

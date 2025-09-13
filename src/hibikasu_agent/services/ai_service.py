@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import threading
+import asyncio
 import time
 import uuid
 from typing import Any, cast
@@ -8,21 +8,22 @@ from typing import Any, cast
 from hibikasu_agent.api.schemas import Issue, IssueSpan
 from hibikasu_agent.services.base import AbstractReviewService
 from hibikasu_agent.services.models import ReviewRuntimeSession
-from hibikasu_agent.services.providers import adk
+from hibikasu_agent.services.providers.adk import ADKService
 from hibikasu_agent.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
 
 
 class AiService(AbstractReviewService):
-    """AI-backed review service (self-contained).
+    """AI-backed review service.
 
-    Manages its own in-memory session store and invokes the ADK pipeline
-    via `providers.adk.run_review` to compute issues.
+    Manages in-memory review sessions and uses an ADKService provider
+    to compute review issues asynchronously.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, adk_service: ADKService) -> None:
         self._reviews: dict[str, ReviewRuntimeSession] = {}
+        self.adk_service = adk_service
 
     @property
     def reviews_in_memory(self) -> dict[str, ReviewRuntimeSession]:
@@ -74,12 +75,19 @@ class AiService(AbstractReviewService):
                 continue
         return added
 
-    def kickoff_compute(self, review_id: str) -> None:
+    async def answer_dialog(self, review_id: str, issue_id: str, question_text: str) -> str:
+        issue = self.find_issue(review_id, issue_id)
+        if not issue:
+            return "該当する論点が見つかりませんでした。"
+        return await self.adk_service.answer_dialog_async(issue, question_text)
+
+    def kickoff_review(self, review_id: str) -> None:
+        """同期メソッド。BackgroundTasks から呼ばれて非同期レビューを実行する。"""
         sess = self._reviews.get(review_id)
         if not sess or sess.issues is not None:
             return
         try:
-            issues = adk.run_review(sess.prd_text)
+            issues = asyncio.run(self.adk_service.run_review_async(sess.prd_text))
         except Exception as err:  # nosec B110
             sess.status = "failed"
             sess.error = str(err)
@@ -88,13 +96,3 @@ class AiService(AbstractReviewService):
         self._enrich_issue_spans(sess.prd_text, issues)
         sess.issues = issues
         sess.status = "completed"
-
-    async def start_review_process(self, prd_text: str, panel_type: str | None = None) -> str:
-        review_id = self.new_review_session(prd_text, panel_type)
-        # Start compute on a background thread to avoid blocking
-        try:
-            threading.Thread(target=self.kickoff_compute, args=(review_id,), daemon=True).start()
-        except Exception:  # nosec B110
-            # Fallback to synchronous compute
-            self.kickoff_compute(review_id)
-        return review_id

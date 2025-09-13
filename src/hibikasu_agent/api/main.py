@@ -6,6 +6,7 @@ from typing import Any
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from hibikasu_agent.api.dependencies import _use_ai_mode
 from hibikasu_agent.api.routers.reviews import router as reviews_router
 from hibikasu_agent.core.config import settings
 from hibikasu_agent.utils.logging_config import get_logger, setup_application_logging
@@ -19,7 +20,16 @@ async def lifespan(app: FastAPI):  # type: ignore[no-untyped-def]
     # Configure application/package logging
     setup_application_logging(settings.hibikasu_log_level)
 
-    # ADK-backed review installation is handled by providers/DI as needed
+    # Initialize ADK provider once if running in AI mode
+    if _use_ai_mode():
+        try:
+            from hibikasu_agent.services.providers.adk import ADKService
+
+            app.state.adk_service = ADKService()
+            logger.info("ADKService initialized and stored in app.state")
+        except Exception as err:  # nosec B110
+            # Do not crash app; requests will see failure when trying to use AI mode
+            logger.error("Failed to initialize ADKService", extra={"error": str(err)})
 
     yield
 
