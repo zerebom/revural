@@ -39,5 +39,5 @@ def test_answer_dialog_calls_provider():
     svc.kickoff_review(rid)
     issue_id = svc.reviews_in_memory[rid].issues[0].issue_id  # type: ignore[index]
 
-    out = asyncio.get_event_loop().run_until_complete(svc.answer_dialog(rid, issue_id, "Q?"))
+    out = asyncio.run(svc.answer_dialog(rid, issue_id, "Q?"))
     assert out == f"ans:{issue_id}:Q?"

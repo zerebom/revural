@@ -25,6 +25,9 @@ class Settings:
         cors_allow_origin_regex: str | None = None,
         hibikasu_log_level: str = "INFO",
     ) -> None:
+        # Predeclare internal attributes with optional types for mypy
+        self._cors_allow_origins_raw: str | None = None
+        self._cors_allow_origins_list: list[str] | None = None
         # Accept both CSV string and list for flexibility
         if isinstance(cors_allow_origins, str):
             self._cors_allow_origins_raw = cors_allow_origins
@@ -32,9 +35,6 @@ class Settings:
         elif isinstance(cors_allow_origins, list):
             self._cors_allow_origins_raw = ",".join(cors_allow_origins)
             self._cors_allow_origins_list = cors_allow_origins
-        else:
-            self._cors_allow_origins_raw = None
-            self._cors_allow_origins_list = None
 
         self.cors_allow_origin_regex = cors_allow_origin_regex
         self.hibikasu_log_level = hibikasu_log_level

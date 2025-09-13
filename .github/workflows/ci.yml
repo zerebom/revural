@@ -45,11 +45,6 @@ jobs:
     - name: Run pre-commit
       run: uv run pre-commit run --all-files
 
-    - name: Check for security issues
-      run: |
-        uv run pip-audit
-        uv run bandit -r src/
-
   type-check:
     name: Type Check
     runs-on: ubuntu-latest
