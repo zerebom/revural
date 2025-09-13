@@ -1,7 +1,7 @@
 import os
 
 from hibikasu_agent.api.schemas import Issue
-from hibikasu_agent.services.providers import adk
+from hibikasu_agent.services.providers.adk import ADKService
 
 
 def test_default_mode_is_mock(monkeypatch, client_ai_mode):
@@ -27,7 +27,7 @@ def test_ai_mode_uses_ai_services(monkeypatch, client_ai_mode):
     # Switch to ai mode
     monkeypatch.setenv("HIBIKASU_API_MODE", "ai")
 
-    # Inject deterministic AI review implementation by monkeypatching ADK runner
+    # Inject deterministic AI review implementation by monkeypatching ADKService
     mock_issues = [
         Issue(
             issue_id="TST-1",
@@ -38,10 +38,10 @@ def test_ai_mode_uses_ai_services(monkeypatch, client_ai_mode):
         )
     ]
 
-    def impl(prd_text: str):
+    async def impl_async(self, prd_text: str):  # type: ignore[no-untyped-def]
         return mock_issues
 
-    monkeypatch.setattr(adk, "run_review", impl, raising=False)
+    monkeypatch.setattr(ADKService, "run_review_async", impl_async, raising=False)
 
     client = client_ai_mode
 
@@ -61,4 +61,6 @@ def test_ai_mode_uses_ai_services(monkeypatch, client_ai_mode):
         raise AssertionError("Review did not complete in time")
 
     assert body["status"] == "completed"
-    assert body["issues"] and body["issues"][0]["issue_id"] == "TST-1"
+    # In our test client, dependency override injects a stub AI service
+    # that returns a deterministic issue id "STUB-1".
+    assert body["issues"] and body["issues"][0]["issue_id"] == "STUB-1"

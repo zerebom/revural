@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
-from hibikasu_agent.api.dependencies import get_service
+from hibikasu_agent.api.dependencies import get_review_service
 from hibikasu_agent.api.schemas import (
     ApplySuggestionResponse,
     DialogRequest,
@@ -15,7 +15,6 @@ from hibikasu_agent.api.schemas import (
     SuggestResponse,
 )
 from hibikasu_agent.services.base import AbstractReviewService
-from hibikasu_agent.services.providers.adk import answer_dialog_from_issue as adk_answer_dialog
 from hibikasu_agent.utils.logging_config import get_logger
 
 router = APIRouter()
@@ -25,9 +24,13 @@ logger = get_logger(__name__)
 @router.post("/reviews", response_model=ReviewResponse)
 async def start_review(
     req: ReviewRequest,
-    service: AbstractReviewService = Depends(get_service),
+    background_tasks: BackgroundTasks,
+    service: AbstractReviewService = Depends(get_review_service),
 ) -> ReviewResponse:
-    review_id = await service.start_review_process(req.prd_text, req.panel_type)
+    # 1) セッションだけ先に作成（同期）
+    review_id = service.new_review_session(req.prd_text, req.panel_type)
+    # 2) 重い計算はバックグラウンドへ（同期ラッパーを登録）
+    background_tasks.add_task(service.kickoff_review, review_id=review_id)
     logger.info(
         "start_review accepted",
         extra={"review_id": review_id, "panel_type": req.panel_type or "", "prd_len": len(req.prd_text or "")},
@@ -36,7 +39,7 @@ async def start_review(
 
 
 @router.get("/reviews/{review_id}", response_model=StatusResponse)
-async def get_review(review_id: str, service: AbstractReviewService = Depends(get_service)) -> StatusResponse:
+async def get_review(review_id: str, service: AbstractReviewService = Depends(get_review_service)) -> StatusResponse:
     data: dict[str, Any] = service.get_review_session(review_id)
     try:
         issues_count = len(data.get("issues") or []) if isinstance(data.get("issues"), list) else 0
@@ -54,12 +57,12 @@ async def issue_dialog(
     review_id: str,
     issue_id: str,
     req: DialogRequest,
-    service: AbstractReviewService = Depends(get_service),
+    service: AbstractReviewService = Depends(get_review_service),
 ) -> DialogResponse:
     issue = service.find_issue(review_id, issue_id)
     if issue is None:
         raise HTTPException(status_code=404, detail="Issue not found")
-    text = await adk_answer_dialog(issue, req.question_text)
+    text = await service.answer_dialog(review_id, issue_id, req.question_text)
     return DialogResponse(response_text=text)
 
 
@@ -67,7 +70,7 @@ async def issue_dialog(
 async def issue_suggest(
     review_id: str,
     issue_id: str,
-    service: AbstractReviewService = Depends(get_service),
+    service: AbstractReviewService = Depends(get_review_service),
 ) -> SuggestResponse:
     issue = service.find_issue(review_id, issue_id)
     target_text = issue.original_text if issue else "(対象テキスト未取得)"
@@ -85,7 +88,7 @@ async def issue_suggest(
 async def issue_apply_suggestion(
     review_id: str,
     issue_id: str,
-    service: AbstractReviewService = Depends(get_service),
+    service: AbstractReviewService = Depends(get_review_service),
 ) -> ApplySuggestionResponse:
     _ = (review_id, issue_id, service)
     return ApplySuggestionResponse(status="success")
