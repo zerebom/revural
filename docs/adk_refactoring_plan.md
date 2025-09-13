@@ -251,3 +251,30 @@ ADKは外部のAIモデルに依存し、その応答は非決定的であるた
     -   [ ] `genai` APIなど、外部へのネットワーク呼び出しはモック化し、AIモデルの非決定性を排除する。
     -   [ ] `POST /reviews` から `GET /reviews/{review_id}` へのポーリングフローが、リファクタリング後も正常に動作することを確認するテスト。
     -   [ ] `POST /reviews/.../dialog` エンドポイントが、`AiService` を経由して正常に応答を返すことを確認するテスト。
+
+---
+
+## 未完了のタスク (TODO)
+
+前回のレビューで指摘された通り、エージェントの出力信頼性を完全に保証するためのリファクタリングが未完了です。以下のタスクを完了させる必要があります。
+
+### Step 5: AgentTool を利用した出力の型保証
+
+**目的:** `ParallelAgent` を経由する各スペシャリストの出力が、LLMによる要約で型崩れするリスクを完全に排除し、常にPydanticオブジェクトとして後続の処理に渡されることを保証します。
+
+**具体的なタスク:**
+
+1.  **`src/hibikasu_agent/agents/parallel_orchestrator/agent.py` の修正**
+    -   [ ] `google.adk.tools` から `AgentTool` をインポートします。
+    -   [ ] `create_parallel_review_agent` 内で定義している各スペシャリスト (`engineer`, `ux`, `qa`, `pm`) を `AgentTool` でラップします。
+        -   `skip_summarization=True` を必ず設定してください。
+        -   例: `engineer_tool = AgentTool(agent=engineer, skip_summarization=True)`
+    -   [ ] `ParallelAgent` を、これらの `AgentTool` をツールとして持つ `LlmAgent` に置き換えることを検討します。プロンプトで4つのツールを呼び出すよう指示し、その結果を `merger` エージェントに渡す構成に変更します。
+        -   ADKの `ParallelAgent` が `AgentTool` を直接 `sub_agents` としてサポートしているかドキュメントで再確認し、サポートしていない場合はこのアプローチを採用します。
+
+2.  **`src/hibikasu_agent/agents/parallel_orchestrator/tools.py` の単純化**
+    -   [ ] `_to_final_issues` 内の防御的コード (`hasattr(item, "model_dump")` や `isinstance` チェック) を完全に削除し、引数が常に型保証された `IssuesResponse` オブジェクトであることを前提とした実装に修正します。
+
+3.  **`src/hibikasu_agent/services/providers/adk.py` の単純化**
+    -   [ ] `run_review_async` 内の `state` から `final_review_issues` を取得する部分の防御的コード (`hasattr(out, "final_issues")` や `isinstance(out, dict)`) を完全に削除します。
+    -   [ ] `state` から取得したオブジェクトが常に `FinalIssuesResponse` 型であることを前提とし、`out.final_issues` のように直接プロパティにアクセスするコードに修正します。

@@ -1,13 +1,13 @@
 """Parallel Orchestrator that aggregates specialist issues into FinalIssue list.
 
-This agent runs four specialist LlmAgents concurrently via ParallelAgent,
-then merges their structured outputs using a tool into FinalIssuesResponse.
+This agent orchestrates four specialist agents via AgentTool with summarization
+disabled, then aggregates their typed outputs into FinalIssuesResponse.
 """
 
 from typing import cast
 
-from google.adk.agents import LlmAgent, ParallelAgent, SequentialAgent
-from google.adk.tools import FunctionTool
+from google.adk.agents import LlmAgent, SequentialAgent
+from google.adk.tools import AgentTool, FunctionTool
 from pydantic import BaseModel as PydanticBaseModel
 
 from hibikasu_agent.agents.parallel_orchestrator.tools import (
@@ -21,12 +21,13 @@ from hibikasu_agent.schemas.models import FinalIssuesResponse
 
 
 def create_parallel_review_agent(model: str = "gemini-2.5-flash") -> SequentialAgent:
-    """Build the parallel review workflow agent.
+    """Build the review workflow agent using AgentTools.
 
     Flow:
-    1) ParallelAgent runs 4 specialists concurrently, each producing IssuesResponse
-       and storing it under a dedicated output_key in session state.
-    2) Merger LlmAgent invokes a tool to aggregate these into FinalIssuesResponse.
+    1) A controller LlmAgent calls four specialist AgentTools, each returning
+       IssuesResponse as a typed object (skip_summarization=True).
+    2) The controller then invokes the aggregate_final_issues tool to produce
+       a FinalIssuesResponse and stores it under "final_review_issues".
     """
 
     # 1) Specialists with explicit output keys
@@ -62,39 +63,41 @@ def create_parallel_review_agent(model: str = "gemini-2.5-flash") -> SequentialA
         output_key="pm_issues",
     )
 
-    parallel = ParallelAgent(
-        name="ParallelSpecialistReview",
-        sub_agents=[engineer, ux, qa, pm],
-        description="Runs four specialists in parallel to generate issue lists.",
-    )
+    # 1.5) Wrap specialists as AgentTools with summarization disabled
+    engineer_tool = AgentTool(agent=engineer, skip_summarization=True)
+    ux_tool = AgentTool(agent=ux, skip_summarization=True)
+    qa_tool = AgentTool(agent=qa, skip_summarization=True)
+    pm_tool = AgentTool(agent=pm, skip_summarization=True)
 
-    # 2) Aggregation tool and merger agent
+    # 2) Aggregation tool
     aggregate_tool = FunctionTool(aggregate_final_issues)
 
-    merger = LlmAgent(
-        name="IssueAggregatorMerger",
+    # Controller LlmAgent: calls four tools then aggregates
+    controller = LlmAgent(
+        name="SpecialistToolOrchestrator",
         model=model,
-        description=("Aggregates parallel specialist outputs into a prioritized final list."),
+        description=("Invokes four specialist AgentTools and aggregates their typed outputs."),
         instruction=(
-            "あなたはレビュー統合責任者です。\n"
-            "提供された4人の専門家のレビュー結果を、必ずaggregate_final_issuesツールを使って統合してください。\n\n"
-            "引数は次の通りです。\n"
-            "- prd_text: 会話の入力（完全なPRD本文）\n"
-            "- engineer_issues: {engineer_issues}\n"
-            "- ux_designer_issues: {ux_designer_issues}\n"
-            "- qa_tester_issues: {qa_tester_issues}\n"
-            "- pm_issues: {pm_issues}\n\n"
-            "出力はツールの戻り値（FinalIssuesResponse）のみを返してください。"
+            "あなたはレビュー統合責任者です。次の手順で必ずツールを呼び出してください。\n"
+            "1) engineer_specialist, ux_designer_specialist, qa_tester_specialist, pm_specialist の各ツールを呼び出し、"
+            "IssuesResponse を取得します。\n"
+            "2) aggregate_final_issues ツールを呼び出し、引数は次を指定します。\n"
+            "   - prd_text: 会話の入力（完全なPRD本文）\n"
+            "   - engineer_issues: 1) で得たエンジニアの IssuesResponse\n"
+            "   - ux_designer_issues: 1) で得たUXデザイナーの IssuesResponse\n"
+            "   - qa_tester_issues: 1) で得たQAテスターの IssuesResponse\n"
+            "   - pm_issues: 1) で得たPMの IssuesResponse\n"
+            "3) ツールの戻り値（FinalIssuesResponse）のみを最終出力として返します。テキスト要約はしないでください。"
         ),
-        tools=[aggregate_tool],
+        tools=[engineer_tool, ux_tool, qa_tool, pm_tool, aggregate_tool],
         output_schema=cast(type[PydanticBaseModel], FinalIssuesResponse),
         output_key="final_review_issues",
     )
 
     pipeline = SequentialAgent(
-        name="ParallelReviewAndAggregatePipeline",
-        sub_agents=[parallel, merger],
-        description=("Coordinates parallel specialist review and deterministic aggregation."),
+        name="ReviewPipelineWithTools",
+        sub_agents=[controller],
+        description=("Coordinates specialist AgentTools and deterministic aggregation."),
     )
 
     return pipeline

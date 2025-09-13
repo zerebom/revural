@@ -14,10 +14,8 @@ from hibikasu_agent.agents.parallel_orchestrator.agent import (
     create_coordinator_agent,
     create_parallel_review_agent,
 )
-from hibikasu_agent.agents.parallel_orchestrator.tools import (
-    aggregate_final_issues,
-)
 from hibikasu_agent.api.schemas import Issue as ApiIssue
+from hibikasu_agent.api.schemas import IssueSpan
 from hibikasu_agent.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -63,10 +61,11 @@ class ADKService:
 
             sess = await service.get_session(app_name=app_name, user_id=user_id, session_id=session_id)
             state = getattr(sess, "state", {}) if sess else {}
-            out = state.get("final_review_issues") or {}
-            final_issues: list[dict] = []
-            if isinstance(out, dict) and isinstance(out.get("final_issues"), list):
-                final_issues = list(out.get("final_issues") or [])
+            out = state.get("final_review_issues")
+
+            # Expect a typed FinalIssuesResponse object and access directly
+            issues_obj = out.final_issues  # type: ignore[attr-defined]
+            final_issues: list[dict] = [item.model_dump() for item in (issues_obj or [])]
 
             logger.info(
                 "ADK review run done",
@@ -77,33 +76,22 @@ class ADKService:
                 },
             )
 
-            # Fallback local aggregation
-            if not final_issues and isinstance(state, dict):
-                try:
-                    logger.info("Falling back to local aggregation from specialist outputs")
-                    agg = aggregate_final_issues(
-                        prd_text=str(prd_text),
-                        engineer_issues=state.get("engineer_issues"),
-                        ux_designer_issues=state.get("ux_designer_issues"),
-                        qa_tester_issues=state.get("qa_tester_issues"),
-                        pm_issues=state.get("pm_issues"),
-                    )
-                    if isinstance(agg, dict) and isinstance(agg.get("final_issues"), list):
-                        final_issues = list(agg["final_issues"])
-                        logger.info("Local aggregation produced issues", extra={"count": len(final_issues)})
-                except Exception as agg_err:  # nosec B110
-                    logger.error("Local aggregation failed", extra={"error": str(agg_err)})
+            # No local aggregation fallback: rely on orchestrator outputs
 
             api_issues: list[ApiIssue] = []
             for item in final_issues:
                 try:
+                    original = str(item.get("original_text") or "")
+                    # Compute span best-effort here; AiService will skip if already set
+                    span_obj = self._calculate_span(prd_text, original)
                     api_issues.append(
                         ApiIssue(
                             issue_id=str(item.get("issue_id") or ""),
                             priority=int(item.get("priority") or 0),
                             agent_name=str(item.get("agent_name") or "unknown"),
                             comment=str(item.get("comment") or ""),
-                            original_text=str(item.get("original_text") or ""),
+                            original_text=original,
+                            span=span_obj,
                         )
                     )
                 except Exception as err:  # validation error on a single item
@@ -163,3 +151,22 @@ class ADKService:
         except Exception as err:  # nosec B110
             logger.error("Dialog execution failed", extra={"error": str(err)})
             return "（簡易回答）現在うまく回答できません。時間を置いて再度お試しください。"
+
+    # ----- Internal helpers -----
+
+    def _calculate_span(self, prd_text: str, original_text: str) -> IssueSpan | None:
+        """Compute a best-effort span of original_text within prd_text.
+
+        Returns an IssueSpan if found, else None. Uses a simple substring search
+        with whitespace-trimmed snippet to avoid trivial mismatches.
+        """
+        try:
+            snippet = (original_text or "").strip()
+            if not snippet:
+                return None
+            start = prd_text.find(snippet)
+            if start < 0:
+                return None
+            return IssueSpan(start_index=start, end_index=start + len(snippet))
+        except Exception:  # nosec B110
+            return None
