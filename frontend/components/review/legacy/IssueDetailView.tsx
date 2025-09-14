@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import type { Issue } from "@/lib/types";
-import IssueCard from "@/components/IssueCard";
+import IssueCard from "@/components/review/legacy/IssueCard";
 
 type Props = {
   reviewId: string;
