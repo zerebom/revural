@@ -63,29 +63,47 @@ class ADKService:
                 )
             return None
 
-        # 正規化された文字列での開始位置を基に、元の文字列でのインデックスを再計算
-        chars_to_skip = len(self._normalize_text(prd_text[:start_index_normalized]))
-
+        # 正規化された開始位置(start_index_normalized)を、元の文字列インデックスへマップ
+        # アルゴリズム: 元テキストを先頭から走査し、非空白文字を start_index_normalized 個スキップした
+        # 次の非空白文字の位置を開始インデックスとする。
         actual_start_index = -1
-        non_space_count = 0
-        for i, char in enumerate(prd_text):
-            if non_space_count == chars_to_skip:
-                actual_start_index = i
-                break
-            if not char.isspace():
-                non_space_count += 1
-
-        if actual_start_index == -1 and chars_to_skip == 0:
-            actual_start_index = 0
+        non_space_seen = 0
+        for i, ch in enumerate(prd_text):
+            if not ch.isspace():
+                if non_space_seen == start_index_normalized:
+                    actual_start_index = i
+                    break
+                non_space_seen += 1
 
         if actual_start_index == -1:
-            return None  # Should not happen if find succeeded
+            # start_index_normalized が 0 の場合など、最初の非空白が開始
+            if start_index_normalized == 0:
+                # 最初の非空白を探す
+                for i, ch in enumerate(prd_text):
+                    if not ch.isspace():
+                        actual_start_index = i
+                        break
+                if actual_start_index == -1:
+                    actual_start_index = 0
+            else:
+                return None
 
-        # 元の original_text の長さを end_index の計算に使う
-        return IssueSpan(
-            start_index=actual_start_index,
-            end_index=actual_start_index + len(original_text),
-        )
+        # 終端は、開始から "original_normalized" の長さ分の非空白文字をカバーする位置まで進める
+        target_len = len(original_normalized)
+        covered = 0
+        actual_end_index = actual_start_index
+        for j in range(actual_start_index, len(prd_text)):
+            c = prd_text[j]
+            if not c.isspace():
+                covered += 1
+                if covered >= target_len:
+                    actual_end_index = j + 1  # 半開区間のため +1
+                    break
+        else:
+            # 末尾までに満たない場合は末尾を終端にする
+            actual_end_index = len(prd_text)
+
+        return IssueSpan(start_index=actual_start_index, end_index=actual_end_index)
 
     async def run_review_async(self, prd_text: str) -> list[ApiIssue]:
         """
@@ -138,11 +156,21 @@ class ADKService:
                     original_text = str(item.get("original_text") or "")
                     span = self._calculate_span(prd_text, original_text)
                     logger.info(f"ADK issue span: {span}")
+                    # Prefer explicit summary; otherwise derive from comment or original snippet
+                    _comment = str(item.get("comment") or "")
+                    _summary = str(item.get("summary") or "").strip()
+                    if not _summary:
+                        # Heuristic: first sentence or up to 80 chars
+                        head = _comment.strip().splitlines()[0] if _comment else ""
+                        if not head:
+                            head = original_text.strip()
+                        _summary = (head[:80] + ("…" if len(head) > 80 else "")) if head else ""
                     api_issues.append(
                         ApiIssue(
                             issue_id=str(item.get("issue_id") or ""),
                             priority=int(item.get("priority") or 0),
                             agent_name=str(item.get("agent_name") or "unknown"),
+                            summary=_summary,
                             comment=str(item.get("comment") or ""),
                             original_text=original_text,
                             span=span,
@@ -161,6 +189,7 @@ class ADKService:
                     issue_id="AI-ERROR",
                     priority=1,
                     agent_name="AI-Orchestrator",
+                    summary="ADK実行エラー",
                     comment=f"ADK実行に失敗しました: {detail}",
                     original_text=str(prd_text)[:120] or "(empty)",
                 )

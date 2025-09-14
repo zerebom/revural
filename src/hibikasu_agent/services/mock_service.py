@@ -58,7 +58,7 @@ class MockService(AbstractReviewService):
         sess = self._store.get(review_id)
         if not sess:
             return {"status": "not_found", "issues": None}
-        return {"status": sess.status, "issues": sess.issues}
+        return {"status": sess.status, "issues": sess.issues, "prd_text": sess.prd_text}
 
     def find_issue(self, review_id: str, issue_id: str) -> Issue | None:
         session = self._store.get(review_id)
