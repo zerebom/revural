@@ -7,6 +7,7 @@ export interface Issue {
   issue_id: string;
   priority: number;
   agent_name: string;
+  summary: string;
   comment: string;
   original_text: string;
   // ハイライト位置情報（バックエンド対応前は未設定の可能性あり）
@@ -18,6 +19,7 @@ export type ReviewStatus = "processing" | "completed" | "failed" | "not_found";
 export interface ReviewStatusResponse {
   status: ReviewStatus;
   issues: Issue[] | null;
+  prd_text?: string | null;
 }
 
 export interface ReviewStartResponse {
