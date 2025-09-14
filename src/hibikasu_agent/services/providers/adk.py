@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import time
 from contextlib import suppress
 from uuid import uuid4
@@ -14,10 +15,8 @@ from hibikasu_agent.agents.parallel_orchestrator.agent import (
     create_coordinator_agent,
     create_parallel_review_agent,
 )
-from hibikasu_agent.agents.parallel_orchestrator.tools import (
-    aggregate_final_issues,
-)
 from hibikasu_agent.api.schemas import Issue as ApiIssue
+from hibikasu_agent.api.schemas import IssueSpan
 from hibikasu_agent.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -36,6 +35,57 @@ class ADKService:
         self._coordinator_agent = create_coordinator_agent(model=model_name)
         self._chat_session_service = InMemorySessionService()
         logger.info("ADKService initialized.")
+
+    def _normalize_text(self, text: str) -> str:
+        """テキストから空白文字（スペース、タブ、改行など）をすべて除去する"""
+        return re.sub(r"\s+", "", text)
+
+    def _calculate_span(self, prd_text: str, original_text: str) -> IssueSpan | None:
+        """original_text を基に prd_text 内の位置情報 (span) を計算する（正規化対応）"""
+        if not original_text:
+            return None
+
+        # 正規化されたテキストで位置を検索
+        prd_normalized = self._normalize_text(prd_text)
+        original_normalized = self._normalize_text(original_text)
+
+        if not original_normalized:
+            return None
+
+        start_index_normalized = prd_normalized.find(original_normalized)
+        if start_index_normalized == -1:
+            # 正規化しても見つからない場合は、単純な検索を試す
+            start_index_simple = prd_text.find(original_text)
+            if start_index_simple != -1:
+                return IssueSpan(
+                    start_index=start_index_simple,
+                    end_index=start_index_simple + len(original_text),
+                )
+            return None
+
+        # 正規化された文字列での開始位置を基に、元の文字列でのインデックスを再計算
+        chars_to_skip = len(self._normalize_text(prd_text[:start_index_normalized]))
+
+        actual_start_index = -1
+        non_space_count = 0
+        for i, char in enumerate(prd_text):
+            if non_space_count == chars_to_skip:
+                actual_start_index = i
+                break
+            if not char.isspace():
+                non_space_count += 1
+
+        if actual_start_index == -1 and chars_to_skip == 0:
+            actual_start_index = 0
+
+        if actual_start_index == -1:
+            return None  # Should not happen if find succeeded
+
+        # 元の original_text の長さを end_index の計算に使う
+        return IssueSpan(
+            start_index=actual_start_index,
+            end_index=actual_start_index + len(original_text),
+        )
 
     async def run_review_async(self, prd_text: str) -> list[ApiIssue]:
         """
@@ -63,10 +113,13 @@ class ADKService:
 
             sess = await service.get_session(app_name=app_name, user_id=user_id, session_id=session_id)
             state = getattr(sess, "state", {}) if sess else {}
-            out = state.get("final_review_issues") or {}
-            final_issues: list[dict] = []
-            if isinstance(out, dict) and isinstance(out.get("final_issues"), list):
-                final_issues = list(out.get("final_issues") or [])
+            final_review_issues = state.get("final_review_issues")
+            if not final_review_issues or not isinstance(final_review_issues, dict):
+                logger.error("No final_review_issues in state")
+                return []
+            final_issues: list[dict] = final_review_issues.get("final_issues", [])
+
+            # Expect a typed FinalIssuesResponse object and access directly
 
             logger.info(
                 "ADK review run done",
@@ -77,33 +130,22 @@ class ADKService:
                 },
             )
 
-            # Fallback local aggregation
-            if not final_issues and isinstance(state, dict):
-                try:
-                    logger.info("Falling back to local aggregation from specialist outputs")
-                    agg = aggregate_final_issues(
-                        prd_text=str(prd_text),
-                        engineer_issues=state.get("engineer_issues"),
-                        ux_designer_issues=state.get("ux_designer_issues"),
-                        qa_tester_issues=state.get("qa_tester_issues"),
-                        pm_issues=state.get("pm_issues"),
-                    )
-                    if isinstance(agg, dict) and isinstance(agg.get("final_issues"), list):
-                        final_issues = list(agg["final_issues"])
-                        logger.info("Local aggregation produced issues", extra={"count": len(final_issues)})
-                except Exception as agg_err:  # nosec B110
-                    logger.error("Local aggregation failed", extra={"error": str(agg_err)})
+            # No local aggregation fallback: rely on orchestrator outputs
 
             api_issues: list[ApiIssue] = []
             for item in final_issues:
                 try:
+                    original_text = str(item.get("original_text") or "")
+                    span = self._calculate_span(prd_text, original_text)
+                    logger.info(f"ADK issue span: {span}")
                     api_issues.append(
                         ApiIssue(
                             issue_id=str(item.get("issue_id") or ""),
                             priority=int(item.get("priority") or 0),
                             agent_name=str(item.get("agent_name") or "unknown"),
                             comment=str(item.get("comment") or ""),
-                            original_text=str(item.get("original_text") or ""),
+                            original_text=original_text,
+                            span=span,
                         )
                     )
                 except Exception as err:  # validation error on a single item
@@ -114,8 +156,6 @@ class ADKService:
             sub = getattr(err, "exceptions", None)
             if isinstance(sub, list | tuple) and sub:
                 detail = f"{detail} | first_sub={sub[0]}"
-            include_trace = bool(os.getenv("HIBIKASU_LOG_TRACE"))
-            logger.error("ADK review execution failed", extra={"detail": detail}, exc_info=bool(include_trace))
             return [
                 ApiIssue(
                     issue_id="AI-ERROR",

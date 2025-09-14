@@ -10,7 +10,7 @@ from hibikasu_agent.services.mock_service import MockService
 
 
 def _use_ai_mode() -> bool:
-    mode = (os.getenv("HIBIKASU_API_MODE") or "").strip().lower()
+    mode = (os.getenv("HIBIKASU_API_MODE", "ai") or "").strip().lower()
     return mode == "ai"
 
 

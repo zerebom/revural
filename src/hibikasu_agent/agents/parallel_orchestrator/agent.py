@@ -1,18 +1,12 @@
 """Parallel Orchestrator that aggregates specialist issues into FinalIssue list.
 
-This agent runs four specialist LlmAgents concurrently via ParallelAgent,
-then merges their structured outputs using a tool into FinalIssuesResponse.
+This agent orchestrates four specialist agents via AgentTool with summarization
+disabled, then aggregates their typed outputs into FinalIssuesResponse.
 """
 
-from typing import cast
+from google.adk.agents import LlmAgent, SequentialAgent
+from google.adk.tools import AgentTool
 
-from google.adk.agents import LlmAgent, ParallelAgent, SequentialAgent
-from google.adk.tools import FunctionTool
-from pydantic import BaseModel as PydanticBaseModel
-
-from hibikasu_agent.agents.parallel_orchestrator.tools import (
-    aggregate_final_issues,
-)
 from hibikasu_agent.agents.specialist import (
     create_role_agents,
     create_specialist_from_role,
@@ -21,12 +15,14 @@ from hibikasu_agent.schemas.models import FinalIssuesResponse
 
 
 def create_parallel_review_agent(model: str = "gemini-2.5-flash") -> SequentialAgent:
-    """Build the parallel review workflow agent.
+    """Build the review workflow agent using a sequential pipeline based on ADK best practices.
 
     Flow:
-    1) ParallelAgent runs 4 specialists concurrently, each producing IssuesResponse
-       and storing it under a dedicated output_key in session state.
-    2) Merger LlmAgent invokes a tool to aggregate these into FinalIssuesResponse.
+    1) SpecialistRunner agent calls four specialist AgentTools. Their typed
+       outputs (IssuesResponse) are stored in session state via their `output_key`.
+    2) IssueAggregatorMerger agent invokes the aggregate_final_issues tool,
+       which reads from state by referencing state keys (e.g., `{engineer_issues}`)
+       in its instruction, and produces the final FinalIssuesResponse.
     """
 
     # 1) Specialists with explicit output keys
@@ -62,39 +58,85 @@ def create_parallel_review_agent(model: str = "gemini-2.5-flash") -> SequentialA
         output_key="pm_issues",
     )
 
-    parallel = ParallelAgent(
-        name="ParallelSpecialistReview",
-        sub_agents=[engineer, ux, qa, pm],
-        description="Runs four specialists in parallel to generate issue lists.",
+    # 2) Wrap specialists as AgentTools with summarization disabled
+    engineer_tool = AgentTool(agent=engineer, skip_summarization=True)
+    ux_tool = AgentTool(agent=ux, skip_summarization=True)
+    qa_tool = AgentTool(agent=qa, skip_summarization=True)
+    pm_tool = AgentTool(agent=pm, skip_summarization=True)
+
+    # 3) Step 1 Agent: Runs the four specialist tools.
+    # The output of each tool is automatically saved to the state under its `output_key`.
+    specialist_runner = LlmAgent(
+        name="SpecialistRunner",
+        model=model,
+        description="Runs four specialist tools.",
+        instruction=(
+            "You must call all four of the following tools using the user's input: "
+            "`engineer_specialist`, `ux_designer_specialist`, "
+            "`qa_tester_specialist`, `pm_specialist`."
+        ),
+        tools=[engineer_tool, ux_tool, qa_tool, pm_tool],
     )
 
-    # 2) Aggregation tool and merger agent
-    aggregate_tool = FunctionTool(aggregate_final_issues)
-
+    # 4) Step 2 Agent: Aggregates the results from state.
+    # aggregate_tool = FunctionTool(aggregate_final_issues)
     merger = LlmAgent(
         name="IssueAggregatorMerger",
         model=model,
         description=("Aggregates parallel specialist outputs into a prioritized final list."),
         instruction=(
-            "あなたはレビュー統合責任者です。\n"
-            "提供された4人の専門家のレビュー結果を、必ずaggregate_final_issuesツールを使って統合してください。\n\n"
-            "引数は次の通りです。\n"
-            "- prd_text: 会話の入力（完全なPRD本文）\n"
-            "- engineer_issues: {engineer_issues}\n"
-            "- ux_designer_issues: {ux_designer_issues}\n"
-            "- qa_tester_issues: {qa_tester_issues}\n"
-            "- pm_issues: {pm_issues}\n\n"
-            "出力はツールの戻り値（FinalIssuesResponse）のみを返してください。"
+            "# あなたの役割\n"
+            "あなたは、4つの専門家チーム（エンジニア、UXデザイナー、QAテスター、プロダクトマネージャー）からの"
+            "PRDレビュー結果を集約し、経営陣への報告に向けて最終的な指摘事項リストを作成する、"
+            "経験豊富なシニアプロダクトマネージャーです。あなたの仕事は、単なる情報の結合ではなく、"
+            "高度な分析と判断を通じて、本質的で実行可能なアクションアイテムへと昇華させることです。\n\n"
+            "# 入力情報\n"
+            "あなたは、以下の4つのJSONオブジェクトをコンテキストとして受け取ります。これらは各専門家チームからの報告書です。\n"
+            "- エンジニアチームの指摘: {engineer_issues}\n"
+            "- UXデザイナーチームの指摘: {ux_designer_issues}\n"
+            "- QAテスターチームの指摘: {qa_tester_issues}\n"
+            "- プロダクトマネージャーチームの指摘: {pm_issues}\n\n"
+            "# あなたが実行すべきタスク\n"
+            "以下の思考プロセスに従い、最終的な指摘事項リストを生成してください。\n\n"
+            "**Step 1: 全指摘事項の把握**\n"
+            "まず、4つのチームから提出されたすべての指摘事項（issues）に注意深く目を通し、全体像を完全に理解してください。\n\n"
+            "**Step 2: 重複・関連指摘の特定とグループ化**\n"
+            "次に、異なるチームから提出されているが、根本的な原因や対象が同じである指摘事項を特定します。\n"
+            "- 例1：「パスワードリセット機能がない」という指摘がUXデザイナーとQAテスターの両方から挙がっている。\n"
+            "- 例2：「セキュアなセッション管理」に関する指摘がエンジニアとQAテスターから挙がっている。\n"
+            "これらの重複または強く関連する指摘を、心の中でグループ化してください。\n\n"
+            "**Step 3: 指摘の統合と洗練**\n"
+            "グループ化した指摘を、最も的確で包括的な一つの指摘に統合します。\n"
+            "- **コメントの統合**: 各チームの視点を組み合わせ、より質の高いコメントに書き換えます。"
+            "なぜそれが問題なのか、どのような影響があるのかを明確にしてください。\n"
+            "- **担当エージェントの決定**: 統合後の指摘は、その内容を最も代表する専門家チームの名前を"
+            "`agent_name`として設定してください。判断に迷う場合は、より影響範囲の広い視点"
+            "（例：技術的な問題よりもプロダクト戦略の問題ならPM）を優先してください。\n"
+            "- **重要度の再評価**: `severity`は、統合された視点から再評価してください。\n\n"
+            "**Step 4: 全体最適化のための優先順位付け**\n"
+            "統合・洗練されたすべての指摘事項をリストアップし、ビジネス全体へのインパクト、"
+            "ユーザー体験への影響、開発の緊急性、実現可能性を総合的に考慮して、"
+            "1から始まる通しの優先順位（`priority`）を付け直してください。"
+            "これがあなたの最も重要な仕事です。数値が小さいほど優先度が高くなります。\n\n"
+            "**Step 5: 最終出力の生成**\n"
+            "最後に、上記のプロセスを経て完成した指摘事項のリストを、以下のスキーマに厳密に従った単一のJSONオブジェクトとして出力してください。\n\n"
+            "# 出力に関する厳格なルール\n"
+            "- あなたの応答は、JSONオブジェクト**のみ**でなければなりません。\n"
+            "- 説明文、前置き、後書き、マークダウンのコードフェンス（```json）など、"
+            "JSON以外のテキストを一切含めないでください。\n"
+            '- 出力は必ず `{{"final_review_issues": [...]}}` というキー構造を持つ必要があります。\n\n'
+            "思考プロセスを丁寧に行い、最高品質の最終報告書を作成してください。"
         ),
-        tools=[aggregate_tool],
-        output_schema=cast(type[PydanticBaseModel], FinalIssuesResponse),
+        # tools=[aggregate_tool],
+        output_schema=FinalIssuesResponse,
         output_key="final_review_issues",
     )
 
+    # 5) Combine them in a SequentialAgent pipeline
     pipeline = SequentialAgent(
-        name="ParallelReviewAndAggregatePipeline",
-        sub_agents=[parallel, merger],
-        description=("Coordinates parallel specialist review and deterministic aggregation."),
+        name="ReviewPipelineWithTools",
+        sub_agents=[specialist_runner, merger],
+        description=("Coordinates specialist AgentTools and deterministic aggregation."),
     )
 
     return pipeline
@@ -152,4 +194,4 @@ def create_coordinator_agent(model: str = "gemini-2.5-flash") -> LlmAgent:
     return coordinator
 
 
-root_agent = create_coordinator_agent(model="gemini-2.5-flash")
+root_agent = create_parallel_review_agent(model="gemini-2.5-flash")

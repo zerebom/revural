@@ -1,98 +1,81 @@
 """Tools for the Parallel Orchestrator workflow."""
 
-from typing import Any, cast
 from uuid import uuid4
 
-from hibikasu_agent.schemas.models import FinalIssue, FinalIssuesResponse, IssueItem
+from hibikasu_agent.schemas.models import (
+    FinalIssue,
+    IssueItem,
+    IssuesResponse,
+)
 from hibikasu_agent.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
 
 
-def _extract_list(value: Any) -> list[dict[str, Any]]:
-    """Extract list[dict] of issues from various possible shapes.
-
-    Accepts:
-    - list[dict]
-    - dict with key "issues"
-    - pydantic model with attribute "issues"
-    - str containing JSON (with or without markdown code block)
-    - None or unexpected -> returns []
-    """
-    logger.info(f"Extracting list from {str(value)[:300]}")
-    if value is None:
-        return []
-
-    # If value is a string, skip processing (not supported without JSON parsing)
-    if isinstance(value, str):
-        return []
-
-    # Already a list of dicts
-    if isinstance(value, list):
-        return cast("list[dict[str, Any]]", value)
-    # Pydantic model or object with attribute
-    issues_attr = getattr(value, "issues", None)
-    if issues_attr is not None:
-        return cast("list[dict[str, Any]]", issues_attr) if isinstance(issues_attr, list) else []
-    # Dict with key
-    if isinstance(value, dict) and isinstance(value.get("issues"), list):
-        return cast("list[dict[str, Any]]", value["issues"])
-    return []
-
-
-def aggregate_final_issues(
-    prd_text: str,
-    engineer_issues: Any,
-    ux_designer_issues: Any,
-    qa_tester_issues: Any,
-    pm_issues: Any,
-) -> dict[str, Any]:
-    """Aggregate specialist issues and return prioritized FinalIssuesResponse.
-
-    Returns a dict compatible with FinalIssuesResponse.model_dump().
-    """
-    logger.info("Aggregating specialist issues into FinalIssue list")
-
-    issues_by_agent: dict[str, list[dict[str, Any]]] = {
-        "engineer": _extract_list(engineer_issues),
-        "ux_designer": _extract_list(ux_designer_issues),
-        "qa_tester": _extract_list(qa_tester_issues),
-        "pm": _extract_list(pm_issues),
-    }
-
+def _to_final_issues(agent_name: str, issues_resp: IssuesResponse) -> list[FinalIssue]:
+    """Convert a typed IssuesResponse to FinalIssue items for a given agent."""
     final_items: list[FinalIssue] = []
-
-    for agent_name, items in issues_by_agent.items():
-        for raw in items:
-            try:
-                parsed = IssueItem(**raw)
-            except Exception as e:  # validation error
-                logger.warning(
-                    "Skipping invalid issue from %s: %s | data=%s",
-                    agent_name,
-                    e,
-                    raw,
-                )
-                continue
-
-            final_items.append(
-                FinalIssue(
-                    issue_id=str(uuid4()),
-                    priority=0,  # set later
-                    agent_name=agent_name,
-                    severity=parsed.normalize_severity(),
-                    comment=parsed.comment,
-                    original_text=parsed.original_text,
-                )
+    for item in issues_resp.issues:
+        # Items are already IssueItem; normalize severity and map
+        parsed: IssueItem = item
+        final_items.append(
+            FinalIssue(
+                issue_id=str(uuid4()),
+                priority=0,  # set later
+                agent_name=agent_name,
+                severity=parsed.normalize_severity(),
+                comment=parsed.comment,
+                original_text=parsed.original_text,
             )
+        )
+    return final_items
 
-    # Priority by severity order (stable within same severity)
-    severity_order = {"High": 0, "Mid": 1, "Low": 2}
-    final_items.sort(key=lambda x: severity_order.get(x.severity, 3))
-    for idx, item in enumerate(final_items, start=1):
-        item.priority = idx
 
-    resp = FinalIssuesResponse(final_issues=final_items)
-    logger.info(f"Created {len(final_items)} final issues")
-    result: dict[str, Any] = resp.model_dump()
-    return result
+# def aggregate_final_issues(
+#     prd_text: str,
+# tool_context: ToolContext,
+# ) -> list[FinalIssue]:
+#     """Aggregate specialist issues from state and return FinalIssuesResponse.
+
+#     This tool reads specialist outputs directly from `tool_context.state`
+#     and parses them into Pydantic models before aggregation.
+#     """
+#     logger.info("--- AGGREGATE TOOL: START (reading from state) ---")
+
+#     state = tool_context.state
+#     engineer_issues_dict = state.get("engineer_issues") or {}
+#     ux_designer_issues_dict = state.get("ux_designer_issues") or {}
+#     qa_tester_issues_dict = state.get("qa_tester_issues") or {}
+#     pm_issues_dict = state.get("pm_issues") or {}
+
+#     # Explicitly parse dicts from state into Pydantic models
+#     engineer_issues = IssuesResponse(
+#         **(engineer_issues_dict if isinstance(engineer_issues_dict, dict) else {})
+#     )
+#     ux_designer_issues = IssuesResponse(
+#         **(ux_designer_issues_dict if isinstance(ux_designer_issues_dict, dict) else {})
+#     )
+#     qa_tester_issues = IssuesResponse(
+#         **(qa_tester_issues_dict if isinstance(qa_tester_issues_dict, dict) else {})
+#     )
+#     pm_issues = IssuesResponse(
+#         **(pm_issues_dict if isinstance(pm_issues_dict, dict) else {})
+#     )
+
+#     final_items: list[FinalIssue] = []
+
+#     final_items.extend(_to_final_issues("engineer", engineer_issues))
+#     final_items.extend(_to_final_issues("ux_designer", ux_designer_issues))
+#     final_items.extend(_to_final_issues("qa_tester", qa_tester_issues))
+#     final_items.extend(_to_final_issues("pm", pm_issues))
+
+#     # Priority by severity order (stable within same severity)
+#     severity_order = {"High": 0, "Mid": 1, "Low": 2}
+#     final_items.sort(key=lambda x: severity_order.get(x.severity, 3))
+#     for idx, item in enumerate(final_items, start=1):
+#         item.priority = idx
+
+#     resp = FinalIssuesResponse(final_issues=final_items)
+#     logger.info(f"--- AGGREGATE TOOL: END ---, Created {len(final_items)} final issues.")
+#     logger.info(f"  - Response object: {resp.model_dump_json(indent=2)}")
+#     return resp

@@ -5,7 +5,7 @@ import time
 import uuid
 from typing import Any, cast
 
-from hibikasu_agent.api.schemas import Issue, IssueSpan
+from hibikasu_agent.api.schemas import Issue
 from hibikasu_agent.services.base import AbstractReviewService
 from hibikasu_agent.services.models import ReviewRuntimeSession
 from hibikasu_agent.services.providers.adk import ADKService
@@ -56,25 +56,6 @@ class AiService(AbstractReviewService):
                 return iss
         return None
 
-    def _enrich_issue_spans(self, prd_text: str, issues: list[Issue] | None) -> int:
-        if not issues:
-            return 0
-        added = 0
-        for iss in issues:
-            try:
-                if getattr(iss, "span", None) is not None:
-                    continue
-                snippet = (iss.original_text or "").strip()
-                if not snippet:
-                    continue
-                start = prd_text.find(snippet)
-                if start >= 0:
-                    iss.span = IssueSpan(start_index=start, end_index=start + len(snippet))
-                    added += 1
-            except Exception:  # nosec B110
-                continue
-        return added
-
     async def answer_dialog(self, review_id: str, issue_id: str, question_text: str) -> str:
         issue = self.find_issue(review_id, issue_id)
         if not issue:
@@ -93,6 +74,5 @@ class AiService(AbstractReviewService):
             sess.error = str(err)
             logger.error("ai review failed", extra={"review_id": review_id, "error": str(err)})
             return
-        self._enrich_issue_spans(sess.prd_text, issues)
         sess.issues = issues
         sess.status = "completed"

@@ -251,3 +251,74 @@ ADKは外部のAIモデルに依存し、その応答は非決定的であるた
     -   [ ] `genai` APIなど、外部へのネットワーク呼び出しはモック化し、AIモデルの非決定性を排除する。
     -   [ ] `POST /reviews` から `GET /reviews/{review_id}` へのポーリングフローが、リファクタリング後も正常に動作することを確認するテスト。
     -   [ ] `POST /reviews/.../dialog` エンドポイントが、`AiService` を経由して正常に応答を返すことを確認するテスト。
+
+---
+
+## 未完了のタスク (TODO)
+
+前回のレビューで指摘された通り、エージェントの出力信頼性を完全に保証するためのリファクタリングが未完了です。以下のタスクを完了させる必要があります。
+
+### Step 5: AgentTool を利用した出力の型保証
+
+**目的:** `ParallelAgent` を経由する各スペシャリストの出力が、LLMによる要約で型崩れするリスクを完全に排除し、常にPydanticオブジェクトとして後続の処理に渡されることを保証します。
+
+**具体的なタスク:**
+
+1.  **`src/hibikasu_agent/agents/parallel_orchestrator/agent.py` の修正**
+    -   [ ] `google.adk.tools` から `AgentTool` をインポートします。
+    -   [ ] `create_parallel_review_agent` 内で定義している各スペシャリスト (`engineer`, `ux`, `qa`, `pm`) を `AgentTool` でラップします。
+        -   `skip_summarization=True` を必ず設定してください。
+        -   例: `engineer_tool = AgentTool(agent=engineer, skip_summarization=True)`
+    -   [ ] `ParallelAgent` を、これらの `AgentTool` をツールとして持つ `LlmAgent` に置き換えることを検討します。プロンプトで4つのツールを呼び出すよう指示し、その結果を `merger` エージェントに渡す構成に変更します。
+        -   ADKの `ParallelAgent` が `AgentTool` を直接 `sub_agents` としてサポートしているかドキュメントで再確認し、サポートしていない場合はこのアプローチを採用します。
+
+2.  **`src/hibikasu_agent/agents/parallel_orchestrator/tools.py` の単純化**
+    -   [ ] `_to_final_issues` 内の防御的コード (`hasattr(item, "model_dump")` や `isinstance` チェック) を完全に削除し、引数が常に型保証された `IssuesResponse` オブジェクトであることを前提とした実装に修正します。
+
+3.  **`src/hibikasu_agent/services/providers/adk.py` の単純化**
+    -   [ ] `run_review_async` 内の `state` から `final_review_issues` を取得する部分の防御的コード (`hasattr(out, "final_issues")` や `isinstance(out, dict)`) を完全に削除します。
+    -   [ ] `state` から取得したオブジェクトが常に `FinalIssuesResponse` 型であることを前提とし、`out.final_issues` のように直接プロパティにアクセスするコードに修正します。
+
+---
+
+## Step 6: SequentialAgent のデバッグと最終修正
+
+### 発生した問題
+
+`Step 5` で `SequentialAgent` を導入して処理を分割した後も、 `'NoneType' object has no attribute 'final_issues'` というエラーが再発した。これは、パイプラインの最終ステップである `Merger` エージェントが、期待される `final_review_issues` を `state` に書き込めていないことを示していた。
+
+### デバッグと根本原因の特定
+
+問題の切り分けのため、`ADKService` と `aggregate_final_issues` ツールに詳細なロガーを仕込み、パイプライン実行後の `session.state` の状態を観測した。
+
+#### ログからの発見事項
+
+1.  **ステップ1 (`SpecialistRunner`) は成功していた:**
+    -   ログにより、`state` の中には `engineer_issues`, `ux_designer_issues` などのキーが正しく存在し、その値も期待通りの構造を持つ `dict` であることが確認された。パイプラインの最初のステップは完璧に動作していた。
+
+2.  **ステップ2 (`Merger`) は失敗していた:**
+    -   `aggregate_final_issues` ツール内に仕込んだはずのログが一切出力されなかった。これは、`Merger` エージェントが**ツールを呼び出すこと自体に失敗していた**ことを意味する。
+
+#### 根本原因
+
+`Merger` エージェントの `instruction` 内で `{engineer_issues}` のように `state` の値を参照してツールの引数に渡そうとしていたが、ADKは `state` に保存されている **`dict` を**、ツールのシグネチャで型定義されている **Pydanticモデル (`IssuesResponse`) に自動で変換（パース）してくれなかった。**
+
+この**型のミスマッチ**が原因で、ツール呼び出しがサイレントに失敗し、`Merger` エージェントが結果を出力できずに `None` となり、最終的なエラーに繋がっていた。
+
+### 最終的な解決策（ADKのベストプラクティス）
+
+`state` からデータを読み取り、型変換を行うという複雑な責務を、曖昧さの残るLLMへの `instruction` から、確実なPythonコードである**ツール側**に移動させる。
+
+#### ToDoリスト
+
+1.  **`src/hibikasu_agent/agents/parallel_orchestrator/tools.py` の修正**
+    -   [ ] `from google.adk.tools import tool_context` をインポートする。
+    -   [ ] `aggregate_final_issues` 関数のシグネチャ（引数）を `prd_text: str` のみを受け取るように変更する。
+    -   [ ] 関数内で `tool_context.state.get(...)` を使い、各専門家のレビュー結果 (dict) を `state` から直接取得する。
+    -   [ ] 取得した `dict` を `IssuesResponse(**the_dict)` のようにして、Pydanticモデルに明示的にパースする。
+
+2.  **`src/hibikasu_agent/agents/parallel_orchestrator/agent.py` の修正**
+    -   [ ] `Merger` エージェントの `instruction` から、`{engineer_issues}` などの変数参照をすべて削除する。
+    -   [ ] `instruction` を、「`aggregate_final_issues` ツールを呼び出してください」という、引数に言及しない非常にシンプルな指示に変更する。
+
+この修正により、LLMへの指示が極めて単純になり動作が安定すると同時に、`state` の操作という重要な処理を、曖昧さのないPythonコードにカプセル化することができる。
