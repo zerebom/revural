@@ -40,6 +40,44 @@ class ADKService:
         """テキストから空白文字（スペース、タブ、改行など）をすべて除去する"""
         return re.sub(r"\s+", "", text)
 
+    def _find_simple_span(self, prd_text: str, original_text: str) -> IssueSpan | None:
+        """単純な文字列検索でspanを計算"""
+        start_index = prd_text.find(original_text)
+        if start_index != -1:
+            return IssueSpan(
+                start_index=start_index,
+                end_index=start_index + len(original_text),
+            )
+        return None
+
+    def _find_normalized_start_index(self, prd_text: str, start_index_normalized: int) -> int:
+        """正規化された開始位置を元の文字列インデックスへマップ"""
+        if start_index_normalized == 0:
+            # 最初の非空白文字を探す
+            for i, ch in enumerate(prd_text):
+                if not ch.isspace():
+                    return i
+            return 0
+
+        # 非空白文字を start_index_normalized 個スキップした位置を探す
+        non_space_seen = 0
+        for i, ch in enumerate(prd_text):
+            if not ch.isspace():
+                if non_space_seen == start_index_normalized:
+                    return i
+                non_space_seen += 1
+        return -1
+
+    def _find_end_index(self, prd_text: str, start_index: int, target_len: int) -> int:
+        """開始位置から target_len 分の非空白文字をカバーする終端位置を計算"""
+        covered = 0
+        for j in range(start_index, len(prd_text)):
+            if not prd_text[j].isspace():
+                covered += 1
+                if covered >= target_len:
+                    return j + 1  # 半開区間のため +1
+        return len(prd_text)  # 末尾までに満たない場合
+
     def _calculate_span(self, prd_text: str, original_text: str) -> IssueSpan | None:
         """original_text を基に prd_text 内の位置情報 (span) を計算する（正規化対応）"""
         if not original_text:
@@ -55,53 +93,16 @@ class ADKService:
         start_index_normalized = prd_normalized.find(original_normalized)
         if start_index_normalized == -1:
             # 正規化しても見つからない場合は、単純な検索を試す
-            start_index_simple = prd_text.find(original_text)
-            if start_index_simple != -1:
-                return IssueSpan(
-                    start_index=start_index_simple,
-                    end_index=start_index_simple + len(original_text),
-                )
+            return self._find_simple_span(prd_text, original_text)
+
+        # 正規化された開始位置を、元の文字列インデックスへマップ
+        actual_start_index = self._find_normalized_start_index(prd_text, start_index_normalized)
+        if actual_start_index == -1:
             return None
 
-        # 正規化された開始位置(start_index_normalized)を、元の文字列インデックスへマップ
-        # アルゴリズム: 元テキストを先頭から走査し、非空白文字を start_index_normalized 個スキップした
-        # 次の非空白文字の位置を開始インデックスとする。
-        actual_start_index = -1
-        non_space_seen = 0
-        for i, ch in enumerate(prd_text):
-            if not ch.isspace():
-                if non_space_seen == start_index_normalized:
-                    actual_start_index = i
-                    break
-                non_space_seen += 1
-
-        if actual_start_index == -1:
-            # start_index_normalized が 0 の場合など、最初の非空白が開始
-            if start_index_normalized == 0:
-                # 最初の非空白を探す
-                for i, ch in enumerate(prd_text):
-                    if not ch.isspace():
-                        actual_start_index = i
-                        break
-                if actual_start_index == -1:
-                    actual_start_index = 0
-            else:
-                return None
-
-        # 終端は、開始から "original_normalized" の長さ分の非空白文字をカバーする位置まで進める
+        # 終端位置を計算
         target_len = len(original_normalized)
-        covered = 0
-        actual_end_index = actual_start_index
-        for j in range(actual_start_index, len(prd_text)):
-            c = prd_text[j]
-            if not c.isspace():
-                covered += 1
-                if covered >= target_len:
-                    actual_end_index = j + 1  # 半開区間のため +1
-                    break
-        else:
-            # 末尾までに満たない場合は末尾を終端にする
-            actual_end_index = len(prd_text)
+        actual_end_index = self._find_end_index(prd_text, actual_start_index, target_len)
 
         return IssueSpan(start_index=actual_start_index, end_index=actual_end_index)
 
