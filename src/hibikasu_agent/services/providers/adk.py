@@ -4,7 +4,6 @@ import os
 import re
 import time
 from contextlib import suppress
-from typing import Any
 from uuid import uuid4
 
 from google.adk.runners import Runner
@@ -17,6 +16,7 @@ from hibikasu_agent.agents.parallel_orchestrator.agent import (
     create_parallel_review_agent,
 )
 from hibikasu_agent.api.schemas import Issue as ApiIssue
+from hibikasu_agent.api.schemas import IssueSpan
 from hibikasu_agent.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -40,7 +40,7 @@ class ADKService:
         """テキストから空白文字（スペース、タブ、改行など）をすべて除去する"""
         return re.sub(r"\s+", "", text)
 
-    def _calculate_span(self, prd_text: str, original_text: str) -> dict[str, Any] | None:
+    def _calculate_span(self, prd_text: str, original_text: str) -> IssueSpan | None:
         """original_text を基に prd_text 内の位置情報 (span) を計算する（正規化対応）"""
         if not original_text:
             return None
@@ -57,10 +57,10 @@ class ADKService:
             # 正規化しても見つからない場合は、単純な検索を試す
             start_index_simple = prd_text.find(original_text)
             if start_index_simple != -1:
-                return {
-                    "start_index": start_index_simple,
-                    "end_index": start_index_simple + len(original_text),
-                }
+                return IssueSpan(
+                    start_index=start_index_simple,
+                    end_index=start_index_simple + len(original_text),
+                )
             return None
 
         # 正規化された文字列での開始位置を基に、元の文字列でのインデックスを再計算
@@ -82,10 +82,10 @@ class ADKService:
             return None  # Should not happen if find succeeded
 
         # 元の original_text の長さを end_index の計算に使う
-        return {
-            "start_index": actual_start_index,
-            "end_index": actual_start_index + len(original_text),
-        }
+        return IssueSpan(
+            start_index=actual_start_index,
+            end_index=actual_start_index + len(original_text),
+        )
 
     async def run_review_async(self, prd_text: str) -> list[ApiIssue]:
         """
@@ -113,7 +113,11 @@ class ADKService:
 
             sess = await service.get_session(app_name=app_name, user_id=user_id, session_id=session_id)
             state = getattr(sess, "state", {}) if sess else {}
-            final_issues: list[dict] = state.get("final_review_issues")["final_issues"]
+            final_review_issues = state.get("final_review_issues")
+            if not final_review_issues or not isinstance(final_review_issues, dict):
+                logger.error("No final_review_issues in state")
+                return []
+            final_issues: list[dict] = final_review_issues.get("final_issues", [])
 
             # Expect a typed FinalIssuesResponse object and access directly
 
