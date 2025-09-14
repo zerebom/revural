@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import type { Issue } from "@/lib/types";
 import { getAgentColorClasses } from "@/lib/utils";
+import { useReviewStore } from "@/store/useReviewStore";
 
 export default function IssueAccordionItem({
   issue,
@@ -14,8 +15,14 @@ export default function IssueAccordionItem({
   reviewId: string;
   isSelected?: boolean;
 }) {
-  const priorityVariant = issue.priority === 1 ? "destructive" : issue.priority === 2 ? "warning" : "secondary";
+  const priorityVariant: "default" | "secondary" | "destructive" | "outline" | null | undefined =
+    issue.priority === 1 ? "destructive" : issue.priority === 2 ? "default" : "secondary";
   const colors = getAgentColorClasses(issue.agent_name);
+  const setViewMode = useReviewStore((s) => s.setViewMode);
+  const setExpandedIssueId = useReviewStore((s) => s.setExpandedIssueId);
+  const status = issue.status || "pending";
+  const statusDot =
+    status === "done" ? "bg-emerald-600" : status === "later" ? "bg-amber-500" : "bg-gray-500";
   return (
     <AccordionItem value={issue.issue_id}>
       <AccordionTrigger className={`px-3 ${isSelected ? `${colors.bgActive} ring-1 ${colors.ring}` : ""}`}>
@@ -25,7 +32,10 @@ export default function IssueAccordionItem({
             <p className="truncate text-gray-900">{issue.summary || issue.comment || "(no summary)"}</p>
             <p className="text-xs text-gray-600 truncate">{issue.agent_name}</p>
           </div>
-          <Badge variant={priorityVariant}>優先度 {issue.priority}</Badge>
+          <div className="flex items-center gap-2">
+            <span className={`h-2.5 w-2.5 rounded-full ${statusDot}`} title={`status: ${status}`} />
+            <Badge variant={priorityVariant}>優先度 {issue.priority}</Badge>
+          </div>
         </div>
       </AccordionTrigger>
       <AccordionContent className="px-4 py-4">
@@ -41,10 +51,13 @@ export default function IssueAccordionItem({
             <button
               type="button"
               className="text-sm px-3.5 py-2 rounded border border-gray-300 bg-white hover:bg-gray-50 shadow-sm mt-2"
-              // NOTE: 実装はマイルストーン2で行う
-              onClick={(e) => e.preventDefault()}
+              onClick={(e) => {
+                e.preventDefault();
+                setExpandedIssueId(issue.issue_id);
+                setViewMode('detail');
+              }}
             >
-              AIに質問する（準備中）
+              論点を深掘りする
             </button>
           </div>
         </div>

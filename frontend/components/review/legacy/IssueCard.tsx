@@ -19,10 +19,10 @@ export default function IssueCard({
   position: number; // 1-based index
   total: number;
 }) {
-  const priorityVariant = useMemo(() => {
-    if (issue.priority >= 3) return "destructive" as const; // high
-    if (issue.priority === 2) return "warning" as const; // mid
-    return "secondary" as const; // low/default
+  const priorityVariant = useMemo<"default" | "secondary" | "destructive" | "outline" | null | undefined>(() => {
+    if (issue.priority === 1) return "destructive"; // high
+    if (issue.priority === 2) return "default"; // mid
+    return "secondary"; // low
   }, [issue.priority]);
 
   const avatarInitial = issue.agent_name?.[0]?.toUpperCase() ?? "A";
