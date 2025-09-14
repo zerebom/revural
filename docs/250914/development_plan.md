@@ -138,28 +138,40 @@
 
 ### Backend タスク
 
--   **[ ] 1. データモデルの拡張 (Pydanticモデルの修正)**
-    -   **目的:** 新しいアコーディオンUIの要件（要約と詳細の分離）を満たすため、APIが返却するIssueのデータ構造を拡張する。
-    -   **参照ファイル:** `src/hibikasu_agent/schemas/models.py`
-    -   **AsIs:** `FinalIssue` モデルの `comment` フィールドが、要約と詳細の両方の役割を担ってしまっている。
-    -   **ToBe:** `summary` フィールドを追加して要約の責務を分離し、`comment` は詳細説明に特化させる。
-    -   **方針:**
-        -   `FinalIssue` モデルに `summary: str = Field(description="A short, one-sentence summary for the accordion header")` を追加する。
-        -   既存の `comment` フィールドのdescriptionを `"The full review comment text, including details and rationale"` のように、より役割を明確にするものに更新する。
+#### **アーキテクチャに関する重要事項 (リファクタリング提案)**
 
--   **[ ] 2. AIエージェント出力の修正**
-    -   **目的:** 拡張されたデータモデルに合わせて、各AIスペシャリストエージェントが `summary` と `comment` を両方出力するように修正する。
-    -   **参照ファイル:** `src/hibikasu_agent/agents/specialist.py` (および各スペシャリストの実装)、関連するプロンプト (`prompts/` 以下)
-    -   **AsIs:** エージェントは `comment` のみを出力している。
-    -   **ToBe:** エージェントが、簡潔な `summary` と詳細な `comment` を構造化して出力するようになる。
-    -   **方針:**
-        -   各スペシャリストエージェントに与えるプロンプトを修正し、出力形式として「`summary` (要約)」と「`comment` (詳細)」の両方を要求するように変更する。
-        -   エージェントからの出力（例: JSON）をパースし、新しい `FinalIssue` モデルにマッピングするロジック（オーケストレーター等）を修正する。
+コードレビューの結果、現在の実装には将来の技術的負債に繋がりかねない設計上の課題が発見されました。マイルストーン2の実装と並行して、以下の点の改善を強く推奨します。
 
--   **[ ] 3. APIレスポンスの確認**
-    -   **目的:** 新UIが必要とする情報を、修正後のAPIが過不足なく返却しているかを確認する。
-    -   **参照エンドポイント:** `GET /reviews/{review_id}`
-    -   **確認項目:** レスポンス内の各 `issue` オブジェクトに、**新しく追加された `summary` フィールド**が含まれていることを確認する。
+-   **1. Issueモデルの一本化:**
+    -   **現状の課題:** `api/schemas/reviews.py` の `Issue` と `schemas/models.py` の `FinalIssue` という、ほぼ同じ責務を持つ2つのモデルが混在しており、データの信頼性(Single Source of Truth)を損なっています。
+    -   **推奨アクション:** これら2つのモデルを一つに統合し、アプリケーション全体で単一のIssueモデルを参照するようにリファクタリングする。これにより、意図しないデータの不整合や変換ロジックの複雑化を防ぎます。
+
+-   **2. APIリクエストの厳格なバリデーション:**
+    -   **現状の課題:** ステータス更新APIが受け取る`status`が単なる文字列(`str`)のため、不正な値を受け入れてしまう可能性があります。
+    -   **推奨アクション:** `typing.Literal`を使用し、`"pending"`, `"done"`など、受け入れ可能な値を明示的に定義する。これにより、API層で不正なリクエストを自動的に弾くことができます。
+
+---
+
+1.  **[ ] データモデル拡張:**
+    -   **ファイル:** `src/hibikasu_agent/schemas/models.py`
+    -   **目的:** `FinalIssue` モデルに、指摘の進捗を管理するための `status` フィールドを追加する。
+
+2.  **[ ] APIスキーマ追加:**
+    -   **参照ファイル:** `src/hibikasu_agent/api/schemas/reviews.py`
+    -   **やること:** ステータス更新APIが通信で使うデータ形式を定義する。具体的には、リクエストボディ用に`status`フィールドを持つ`UpdateStatusRequest`モデルと、レスポンス用に`status: Literal["success", "failed"]`を持つ`UpdateStatusResponse`モデルの2つを、Pydanticモデルとして追加する。
+
+3.  **[ ] サービス層インターフェース更新:**
+    -   **参照ファイル:** `src/hibikasu_agent/services/base.py`
+    -   **やること:** `AbstractReviewService`クラスに、`review_id`, `issue_id`, `status`を引数に取り、成否を`bool`で返す`update_issue_status`という名前の抽象メソッドを追加する。
+
+4.  **[ ] サービス層実装:**
+    -   **参照ファイル:** `src/hibikasu_agent/services/mock_service.py`
+    -   **やること:** `MockService`クラスに`update_issue_status`メソッドを実装する。このメソッドは、`self._store`から該当のセッションとIssueを探索し、ステータスを更新するロジックを記述する。
+    -   **注意点:** `MockService`が保持している`Issue`の型と、`status`を持つべき`FinalIssue`の型に不整合がある点に留意して実装する。まずはスタブ実装でも可。
+
+5.  **[ ] APIエンドポイント作成:**
+    -   **参照ファイル:** `src/hibikasu_agent/api/routers/reviews.py`
+    -   **やること:** `@router.patch`デコレータを使用して、`/reviews/{review_id}/issues/{issue_id}/status`というパスでリクエストを受け付けるエンドポイント関数を新規に追加する。この関数は、リクエストボディを受け取り、サービス層の`update_issue_status`メソッドを呼び出して、その結果をレスポンスとして返す。
 
 ---
 
@@ -169,28 +181,142 @@
 
 ### Frontend タスク
 
--   **[ ] 1. 「深掘りビュー」コンポーネントの作成**
-    -   `components/review/IssueDetailView.tsx` を新規作成（旧コンポーネントとは別物）。
-    -   ヘッダーに「< 戻る」ボタンを配置。
-    -   コンテンツとして、既存の `ChatWindow.tsx` と `SuggestionBox.tsx` を移植・統合する。
--   **[ ] 2. パネル切り替えロジックの実装**
-    -   `useReviewStore` に、現在「リスト表示」か「深掘り表示」かを管理する状態 (例: `viewMode: 'list' | 'detail'`) を追加。
-    -   `ReviewPage.tsx` で `viewMode` を監視し、`IssueListView` と `IssueDetailView` の表示を切り替える。
-    -   切り替え時にCSSトランジションやアニメーションライブラリを用いて、スライドアニメーションを実装する。
--   **[ ] 3. ステータス管理機能 (UI)**
-    -   「対応済み」「あとで確認」などのステータスを変更するためのボタンを `IssueDetailView` 内に作成する。
-    -   選択されたステータスを `IssueAccordionItem` のヘッダーにアイコンや色で表示する。
--   **[ ] 4. 状態管理 (Zustand) の拡張**
-    -   `issues` 配列の各 `issue` オブジェクトに `status` プロパティを追加できるようにストアを改修。
-    -   ステータスを変更するためのセッター (`updateIssueStatus`) を実装する。
+#### 1. `IssueDetailView` (深掘りビュー) のレイアウト構築
+
+-   **目的:** 深掘りビューにおける「チャットエリアが狭い」というUI課題を解決する。チャットの高さを最大限確保しつつ、必要な時には議論の文脈も参照できる、バランスの取れたUIを実現する。
+-   **UI/UX方針 (アコーディオン方式):**
+    -   指摘の要約や対象テキストといった**コンテキスト情報を、折りたたみ可能なアコーディオン内に格納**する。
+    -   ユーザーがビューを開いた**初期状態では、アコーディオンは閉じており**、チャットエリアが広く表示される。
+    -   ユーザーが議論の文脈を再確認したい時だけ、アコーディオンを展開して詳細を閲覧する。
+    -   アコーディオンのヘッダーには常に指摘の要約を表示し、ビュー全体の文脈が失われないように配慮する。
+-   **参照ファイル:** `components/review/IssueDetailView.tsx` (新規作成)
+-   **やること:**
+    -   `shadcn/ui`の`Accordion`コンポーネントを使い、上記の方針に基づいたコンテキストエリアを実装する。
+    -   アコーディオンの下に、チャットUIとアクションボタンを配置するメインエリアを設ける。
+
+#### 2. `Vercel AI Elements` 導入とチャットUIの刷新
+
+-   **目的:** 既存のチャットUIを、より高機能でデザイン性の高い`Vercel AI Elements`ベースのものにアップグレードし、対話体験を向上させる。
+-   **参照ライブラリ:** https://ai-sdk.dev/elements/overview
+-   **やること:**
+    -   `npx ai-elements@latest` コマンドを参考に、`Vercel AI Elements`をプロジェクトに導入する。
+    -   `IssueDetailView.tsx`内に、`Vercel AI Elements`の`Conversation`, `Message`, `PromptInput`を組み合わせて、新しいチャットUIを構築する。
+    -   既存のAPI連携ロジック（メッセージの送受信）を、新しいUIに接続する。
+
+#### 3. 状態管理 (Zustand) とパネル切り替えロジックの実装
+
+-   **目的:** リストビューと、新しく構築する`IssueDetailView`（深掘りビュー）との間の画面遷移を、状態管理を通じて制御する。
+-   **参照ファイル:** `frontend/store/useReviewStore.ts`, `frontend/components/ReviewPage.tsx`
+-   **やること:**
+    -   `useReviewStore`に、現在の表示モードを管理する`viewMode: 'list' | 'detail'`の状態を追加する。
+    -   `ReviewPage.tsx`でこの`viewMode`を監視し、表示するコンポーネントを動的に切り替えるロジックを実装する。
+
+#### 4. UI/UXの微調整 (アニメーションとトランジション)
+
+-   **目的:** 画面遷移やUI要素の動きをスムーズにすることで、アプリケーションの操作感を向上させ、より洗練された印象を与える。
+-   **やること:**
+    -   `framer-motion`やCSSトランジションを利用し、`ReviewPage.tsx`でのリストビューと深掘りビューの切り替え時に、パネルが横からスライドイン/アウトするようなアニメーションを実装する。
+    -   `IssueDetailView.tsx`内のアコーディオンが開閉する際のアニメーションが自然に見えるように調整する。
+
+#### 5. 品質の向上 (型定義の強化とテスト)
+
+-   **目的:** フロントエンドコードの堅牢性を高め、将来の機能追加やリファクタリングに備える。
+-   **やること:**
+    -   Zustandストア(`useReviewStore.ts`)のステートとアクションに、より厳密な型定義を適用する。
+    -   `Vitest`と`React Testing Library`を使用し、`useReviewStore`の各アクションが意図通りにステートを更新するかのユニットテストを作成する。特に`setViewMode`や`updateIssueStatus`といった重要なアクションを対象とする。
 
 ### Backend タスク
 
--   **[ ] 1. データモデルの拡張**
-    -   データベースの `Issue` モデル (または相当するもの) に、`status` カラム (e.g., `'pending'`, `'done'`, `'later'`) を追加する。
--   **[ ] 2. APIの新規作成・修正**
-    -   `PATCH /reviews/{review_id}/issues/{issue_id}/status` のような、特定の指摘のステータスを更新するための新しいエンドポイントを作成する。
-    -   `GET /reviews/{review_id}` のレスポンスに、各 `issue` の `status` が含まれるように修正する。
+#### **アーキテクチャに関する重要事項 (リファクタリング提案)**
+
+コードレビューの結果、現在の実装には将来の技術的負債に繋がりかねない設計上の課題が発見されました。マイルストーン2の実装と並行して、以下の点の改善を強く推奨します。
+
+-   **1. Issueモデルの一本化:**
+    -   **現状の課題:** `api/schemas/reviews.py` の `Issue` と `schemas/models.py` の `FinalIssue` という、ほぼ同じ責務を持つ2つのモデルが混在しており、データの信頼性(Single Source of Truth)を損なっています。
+    -   **推奨アクション:** これら2つのモデルを一つに統合し、アプリケーション全体で単一のIssueモデルを参照するようにリファクタリングする。これにより、意図しないデータの不整合や変換ロジックの複雑化を防ぎます。
+
+-   **2. APIリクエストの厳格なバリデーション:**
+    -   **現状の課題:** ステータス更新APIが受け取る`status`が単なる文字列(`str`)のため、不正な値を受け入れてしまう可能性があります。
+    -   **推奨アクション:** `typing.Literal`を使用し、`"pending"`, `"done"`など、受け入れ可能な値を明示的に定義する。これにより、API層で不正なリクエストを自動的に弾くことができます。
+
+---
+
+1.  **[ ] データモデル拡張:**
+    -   **ファイル:** `src/hibikasu_agent/schemas/models.py`
+    -   **目的:** `FinalIssue` モデルに、指摘の進捗を管理するための `status` フィールドを追加する。
+
+2.  **[ ] APIスキーマ追加:**
+    -   **ファイル:** `src/hibikasu_agent/api/schemas/reviews.py`
+    -   **目的:** ステータス更新APIが通信で使うデータ形式（リクエストとレスポンス）を定義する。
+    -   **参照ファイル:** `src/hibikasu_agent/api/schemas/reviews.py`
+    -   **手順:** `ApplySuggestionResponse`の後などに、以下の2つのPydanticモデルを追加する。
+        ```python
+        class UpdateStatusRequest(BaseModel):
+            status: str
+
+        class UpdateStatusResponse(BaseModel):
+            status: Literal["success", "failed"]
+        ```
+
+3.  **[ ] サービス層インターフェース更新:**
+    -   **ファイル:** `src/hibikasu_agent/services/base.py`
+    -   **目的:** `AbstractReviewService` に、ステータス更新機能の共通インターフェース（抽象メソッド）を追加し、責務を明確にする。
+    -   **参照ファイル:** `src/hibikasu_agent/services/base.py`
+    -   **手順:** `AbstractReviewService`クラス内に、以下の抽象メソッド定義を追加する。
+        ```python
+        @abstractmethod
+        def update_issue_status(self, review_id: str, issue_id: str, status: str) -> bool:
+            """Updates the status of a specific issue and returns success."""
+            raise NotImplementedError
+        ```
+
+4.  **[ ] サービス層実装:**
+    -   **ファイル:** `src/hibikasu_agent/services/mock_service.py`
+    -   **目的:** `AbstractReviewService` の新しいインターフェースを実装する。インメモリ上のデータを実際に更新するロジックをここに追加する。
+    -   **参照ファイル:** `src/hibikasu_agent/services/mock_service.py`
+    -   **課題:** `MockService`が保持する`Issue`モデル(`api.schemas.Issue`)と、`status`を持つ`FinalIssue`モデル(`schemas.models.FinalIssue`)の間に不整合がある。このタスクではまず動作するスタブを実装し、この不整合の解消は別途検討する。
+    -   **手順:** `MockService`クラス内に、以下のメソッドを実装する。
+        ```python
+        def update_issue_status(self, review_id: str, issue_id: str, status: str) -> bool:
+            session = self._store.get(review_id)
+            if not session or not session.issues:
+                return False
+
+            # キャストとモデルの不整合に注意
+            issues: list[Issue] = cast("list[Issue]", session.issues)
+
+            for issue in issues:
+                if issue.issue_id == issue_id:
+                    # TODO: モデルの不整合を解消し、実際の更新処理を実装する
+                    # issue.status = status のようなコードを書きたいが、型が異なる
+                    print(f"Issue {issue_id} status updated to {status} (mock)")
+                    return True
+            return False
+        ```
+
+5.  **[ ] APIエンドポイント作成:**
+    -   **ファイル:** `src/hibikasu_agent/api/routers/reviews.py`
+    -   **目的:** フロントエンドからのステータス更新リクエストを受け付けるための `PATCH` エンドポイントを新規に作成する。
+    -   **参照ファイル:** `src/hibikasu_agent/api/routers/reviews.py`
+    -   **手順:**
+        1.  `UpdateStatusRequest`, `UpdateStatusResponse` を`...api.schemas`からインポートする。
+        2.  ファイル下部に以下のエンドポイントを追加する。
+        ```python
+        @router.patch(
+            "/reviews/{review_id}/issues/{issue_id}/status",
+            response_model=UpdateStatusResponse,
+        )
+        def update_issue_status_endpoint(
+            review_id: str,
+            issue_id: str,
+            req: UpdateStatusRequest,
+            service: AbstractReviewService = Depends(get_review_service),
+        ) -> UpdateStatusResponse:
+            success = service.update_issue_status(review_id, issue_id, req.status)
+            if not success:
+                raise HTTPException(status_code=404, detail="Issue not found")
+            return UpdateStatusResponse(status="success")
+        ```
 
 ---
 
