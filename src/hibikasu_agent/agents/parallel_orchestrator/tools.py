@@ -4,7 +4,6 @@ from uuid import uuid4
 
 from hibikasu_agent.schemas.models import (
     FinalIssue,
-    FinalIssuesResponse,
     IssueItem,
     IssuesResponse,
 )
@@ -32,32 +31,51 @@ def _to_final_issues(agent_name: str, issues_resp: IssuesResponse) -> list[Final
     return final_items
 
 
-def aggregate_final_issues(
-    prd_text: str,  # kept for future use/traceability
-    engineer_issues: IssuesResponse,
-    ux_designer_issues: IssuesResponse,
-    qa_tester_issues: IssuesResponse,
-    pm_issues: IssuesResponse,
-) -> FinalIssuesResponse:
-    """Aggregate specialist issues and return prioritized FinalIssuesResponse.
+# def aggregate_final_issues(
+#     prd_text: str,
+# tool_context: ToolContext,
+# ) -> list[FinalIssue]:
+#     """Aggregate specialist issues from state and return FinalIssuesResponse.
 
-    Inputs and outputs are fully typed Pydantic models to ensure reliability.
-    """
-    logger.info("Aggregating specialist issues into FinalIssue list (typed)")
+#     This tool reads specialist outputs directly from `tool_context.state`
+#     and parses them into Pydantic models before aggregation.
+#     """
+#     logger.info("--- AGGREGATE TOOL: START (reading from state) ---")
 
-    final_items: list[FinalIssue] = []
+#     state = tool_context.state
+#     engineer_issues_dict = state.get("engineer_issues") or {}
+#     ux_designer_issues_dict = state.get("ux_designer_issues") or {}
+#     qa_tester_issues_dict = state.get("qa_tester_issues") or {}
+#     pm_issues_dict = state.get("pm_issues") or {}
 
-    final_items.extend(_to_final_issues("engineer", engineer_issues))
-    final_items.extend(_to_final_issues("ux_designer", ux_designer_issues))
-    final_items.extend(_to_final_issues("qa_tester", qa_tester_issues))
-    final_items.extend(_to_final_issues("pm", pm_issues))
+#     # Explicitly parse dicts from state into Pydantic models
+#     engineer_issues = IssuesResponse(
+#         **(engineer_issues_dict if isinstance(engineer_issues_dict, dict) else {})
+#     )
+#     ux_designer_issues = IssuesResponse(
+#         **(ux_designer_issues_dict if isinstance(ux_designer_issues_dict, dict) else {})
+#     )
+#     qa_tester_issues = IssuesResponse(
+#         **(qa_tester_issues_dict if isinstance(qa_tester_issues_dict, dict) else {})
+#     )
+#     pm_issues = IssuesResponse(
+#         **(pm_issues_dict if isinstance(pm_issues_dict, dict) else {})
+#     )
 
-    # Priority by severity order (stable within same severity)
-    severity_order = {"High": 0, "Mid": 1, "Low": 2}
-    final_items.sort(key=lambda x: severity_order.get(x.severity, 3))
-    for idx, item in enumerate(final_items, start=1):
-        item.priority = idx
+#     final_items: list[FinalIssue] = []
 
-    resp = FinalIssuesResponse(final_issues=final_items)
-    logger.info(f"Created {len(final_items)} final issues")
-    return resp
+#     final_items.extend(_to_final_issues("engineer", engineer_issues))
+#     final_items.extend(_to_final_issues("ux_designer", ux_designer_issues))
+#     final_items.extend(_to_final_issues("qa_tester", qa_tester_issues))
+#     final_items.extend(_to_final_issues("pm", pm_issues))
+
+#     # Priority by severity order (stable within same severity)
+#     severity_order = {"High": 0, "Mid": 1, "Low": 2}
+#     final_items.sort(key=lambda x: severity_order.get(x.severity, 3))
+#     for idx, item in enumerate(final_items, start=1):
+#         item.priority = idx
+
+#     resp = FinalIssuesResponse(final_issues=final_items)
+#     logger.info(f"--- AGGREGATE TOOL: END ---, Created {len(final_items)} final issues.")
+#     logger.info(f"  - Response object: {resp.model_dump_json(indent=2)}")
+#     return resp

@@ -278,3 +278,47 @@ ADKは外部のAIモデルに依存し、その応答は非決定的であるた
 3.  **`src/hibikasu_agent/services/providers/adk.py` の単純化**
     -   [ ] `run_review_async` 内の `state` から `final_review_issues` を取得する部分の防御的コード (`hasattr(out, "final_issues")` や `isinstance(out, dict)`) を完全に削除します。
     -   [ ] `state` から取得したオブジェクトが常に `FinalIssuesResponse` 型であることを前提とし、`out.final_issues` のように直接プロパティにアクセスするコードに修正します。
+
+---
+
+## Step 6: SequentialAgent のデバッグと最終修正
+
+### 発生した問題
+
+`Step 5` で `SequentialAgent` を導入して処理を分割した後も、 `'NoneType' object has no attribute 'final_issues'` というエラーが再発した。これは、パイプラインの最終ステップである `Merger` エージェントが、期待される `final_review_issues` を `state` に書き込めていないことを示していた。
+
+### デバッグと根本原因の特定
+
+問題の切り分けのため、`ADKService` と `aggregate_final_issues` ツールに詳細なロガーを仕込み、パイプライン実行後の `session.state` の状態を観測した。
+
+#### ログからの発見事項
+
+1.  **ステップ1 (`SpecialistRunner`) は成功していた:**
+    -   ログにより、`state` の中には `engineer_issues`, `ux_designer_issues` などのキーが正しく存在し、その値も期待通りの構造を持つ `dict` であることが確認された。パイプラインの最初のステップは完璧に動作していた。
+
+2.  **ステップ2 (`Merger`) は失敗していた:**
+    -   `aggregate_final_issues` ツール内に仕込んだはずのログが一切出力されなかった。これは、`Merger` エージェントが**ツールを呼び出すこと自体に失敗していた**ことを意味する。
+
+#### 根本原因
+
+`Merger` エージェントの `instruction` 内で `{engineer_issues}` のように `state` の値を参照してツールの引数に渡そうとしていたが、ADKは `state` に保存されている **`dict` を**、ツールのシグネチャで型定義されている **Pydanticモデル (`IssuesResponse`) に自動で変換（パース）してくれなかった。**
+
+この**型のミスマッチ**が原因で、ツール呼び出しがサイレントに失敗し、`Merger` エージェントが結果を出力できずに `None` となり、最終的なエラーに繋がっていた。
+
+### 最終的な解決策（ADKのベストプラクティス）
+
+`state` からデータを読み取り、型変換を行うという複雑な責務を、曖昧さの残るLLMへの `instruction` から、確実なPythonコードである**ツール側**に移動させる。
+
+#### ToDoリスト
+
+1.  **`src/hibikasu_agent/agents/parallel_orchestrator/tools.py` の修正**
+    -   [ ] `from google.adk.tools import tool_context` をインポートする。
+    -   [ ] `aggregate_final_issues` 関数のシグネチャ（引数）を `prd_text: str` のみを受け取るように変更する。
+    -   [ ] 関数内で `tool_context.state.get(...)` を使い、各専門家のレビュー結果 (dict) を `state` から直接取得する。
+    -   [ ] 取得した `dict` を `IssuesResponse(**the_dict)` のようにして、Pydanticモデルに明示的にパースする。
+
+2.  **`src/hibikasu_agent/agents/parallel_orchestrator/agent.py` の修正**
+    -   [ ] `Merger` エージェントの `instruction` から、`{engineer_issues}` などの変数参照をすべて削除する。
+    -   [ ] `instruction` を、「`aggregate_final_issues` ツールを呼び出してください」という、引数に言及しない非常にシンプルな指示に変更する。
+
+この修正により、LLMへの指示が極めて単純になり動作が安定すると同時に、`state` の操作という重要な処理を、曖昧さのないPythonコードにカプセル化することができる。
