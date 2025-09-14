@@ -38,6 +38,7 @@ class Issue(BaseModel):
     issue_id: str
     priority: int
     agent_name: str
+    summary: str = Field(default="")
     comment: str
     original_text: str
     # Optional highlight span into the original PRD text
@@ -60,6 +61,8 @@ class StatusResponse(BaseModel):
 
     status: Literal["processing", "completed", "failed", "not_found"]
     issues: list[Issue] | None = None
+    # Include original PRD text so the frontend can hydrate state on reload
+    prd_text: str | None = None
 
 
 class DialogRequest(BaseModel):

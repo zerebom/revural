@@ -19,17 +19,21 @@ class Issue(BaseModel):
 
 
 class FinalIssue(BaseModel):
-    """Final issue format enriched by the orchestrator.
+    """オーケストレーターによって拡充された最終的な指摘事項のフォーマット。
 
-    This mirrors the user's desired output shape for aggregated issues.
+    集約された指摘事項に対するユーザーの希望する出力形式を反映しています。
     """
 
-    issue_id: str = Field(description="Unique issue ID")
-    priority: int = Field(description="Priority order (1 = highest)")
-    agent_name: str = Field(description="Name of the specialist who raised it")
-    severity: str = Field(description="Severity level (High/Mid/Low)")
-    comment: str = Field(description="Review comment text")
-    original_text: str = Field(description="Quoted text from original PRD")
+    issue_id: str = Field(description="一意の指摘ID")
+    priority: int = Field(description="優先順位（1が最高,2が中, 3が低）")
+    agent_name: str = Field(description="指摘を挙げた専門家の名前")
+    severity: str = Field(description="深刻度（高/中/低）")
+    summary: str = Field(
+        default="",
+        description="アコーディオンのヘッダーに表示するための一文程度の短い要約",
+    )
+    comment: str = Field(description="詳細や論理的根拠を含む、レビューコメントの全文")
+    original_text: str = Field(description="元のPRDから引用されたテキスト")
 
 
 class FinalIssuesResponse(BaseModel):
