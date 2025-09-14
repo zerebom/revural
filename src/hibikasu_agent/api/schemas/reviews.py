@@ -43,6 +43,8 @@ class Issue(BaseModel):
     original_text: str
     # Optional highlight span into the original PRD text
     span: IssueSpan | None = None
+    # Optional per-issue status managed by the client workflow
+    status: str | None = None
 
 
 class ReviewSession(BaseModel):
@@ -79,4 +81,16 @@ class SuggestResponse(BaseModel):
 
 
 class ApplySuggestionResponse(BaseModel):
+    status: Literal["success", "failed"]
+
+
+class UpdateStatusRequest(BaseModel):
+    """Request body for updating an issue status."""
+
+    status: str
+
+
+class UpdateStatusResponse(BaseModel):
+    """Response for status update operations."""
+
     status: Literal["success", "failed"]

@@ -10,6 +10,8 @@ from .reviews import (
     ReviewResponse,
     StatusResponse,
     SuggestResponse,
+    UpdateStatusRequest,
+    UpdateStatusResponse,
 )
 
 __all__ = [
@@ -22,4 +24,6 @@ __all__ = [
     "DialogResponse",
     "SuggestResponse",
     "ApplySuggestionResponse",
+    "UpdateStatusRequest",
+    "UpdateStatusResponse",
 ]

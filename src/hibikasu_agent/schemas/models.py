@@ -34,6 +34,7 @@ class FinalIssue(BaseModel):
     )
     comment: str = Field(description="詳細や論理的根拠を含む、レビューコメントの全文")
     original_text: str = Field(description="元のPRDから引用されたテキスト")
+    status: str = Field(default="pending", description="指摘のステータス（例: pending, done, later）")
 
 
 class FinalIssuesResponse(BaseModel):

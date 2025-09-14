@@ -67,3 +67,8 @@ class AbstractReviewService(ABC):
         It should call the provider's async review method via asyncio.run().
         """
         ...
+
+    @abstractmethod
+    def update_issue_status(self, review_id: str, issue_id: str, status: str) -> bool:
+        """Updates the status of a specific issue and returns success."""
+        ...

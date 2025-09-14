@@ -13,6 +13,8 @@ from hibikasu_agent.api.schemas import (
     ReviewResponse,
     StatusResponse,
     SuggestResponse,
+    UpdateStatusRequest,
+    UpdateStatusResponse,
 )
 from hibikasu_agent.services.base import AbstractReviewService
 from hibikasu_agent.utils.logging_config import get_logger
@@ -92,3 +94,19 @@ async def issue_apply_suggestion(
 ) -> ApplySuggestionResponse:
     _ = (review_id, issue_id, service)
     return ApplySuggestionResponse(status="success")
+
+
+@router.patch(
+    "/reviews/{review_id}/issues/{issue_id}/status",
+    response_model=UpdateStatusResponse,
+)
+async def update_issue_status_endpoint(
+    review_id: str,
+    issue_id: str,
+    req: UpdateStatusRequest,
+    service: AbstractReviewService = Depends(get_review_service),
+) -> UpdateStatusResponse:
+    success = service.update_issue_status(review_id, issue_id, req.status)
+    if not success:
+        raise HTTPException(status_code=404, detail="Issue not found")
+    return UpdateStatusResponse(status="success")
