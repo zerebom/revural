@@ -15,8 +15,13 @@ export default function IssueAccordionItem({
   reviewId: string;
   isSelected?: boolean;
 }) {
-  const priorityVariant: "default" | "secondary" | "destructive" | "outline" | null | undefined =
-    issue.priority === 1 ? "destructive" : issue.priority === 2 ? "default" : "secondary";
+  // Avoid 'destructive' variant because theme tokens may make it unreadable.
+  const badgeClass =
+    issue.priority === 1
+      ? "bg-red-100 text-red-800 border-red-200"
+      : issue.priority === 2
+        ? "bg-amber-100 text-amber-800 border-amber-200"
+        : "bg-gray-100 text-gray-800 border-gray-200";
   const colors = getAgentColorClasses(issue.agent_name);
   const setViewMode = useReviewStore((s) => s.setViewMode);
   const setExpandedIssueId = useReviewStore((s) => s.setExpandedIssueId);
@@ -34,7 +39,7 @@ export default function IssueAccordionItem({
           </div>
           <div className="flex items-center gap-2">
             <span className={`h-2.5 w-2.5 rounded-full ${statusDot}`} title={`status: ${status}`} />
-            <Badge variant={priorityVariant}>優先度 {issue.priority}</Badge>
+            <Badge className={badgeClass}>優先度 {issue.priority}</Badge>
           </div>
         </div>
       </AccordionTrigger>

@@ -439,7 +439,9 @@ export const PromptInput = ({
         )}
         onSubmit={handleSubmit}
         {...props}
-      />
+      >
+        {props.children}
+      </form>
     </AttachmentsContext.Provider>
   );
 };

@@ -11,6 +11,7 @@ import { Streamdown } from "streamdown";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { toErrorMessage } from "@/lib/errors";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function IssueDetailView({ reviewId, issue }: { reviewId: string; issue: Issue }) {
   const setViewMode = useReviewStore((s) => s.setViewMode);
@@ -47,8 +48,8 @@ export default function IssueDetailView({ reviewId, issue }: { reviewId: string;
   );
 
   return (
-    <div className="h-full flex flex-col rounded border bg-white">
-      <div className="flex items-center gap-3 px-4 py-3 border-b">
+    <div className="flex h-full min-h-0 flex-col rounded border bg-white">
+      <div className="flex items-center gap-3 px-4 py-3 border-b shrink-0">
         <button
           onClick={() => setViewMode("list")}
           className="text-sm px-2.5 py-1.5 rounded border border-gray-300 bg-white hover:bg-gray-50"
@@ -59,7 +60,7 @@ export default function IssueDetailView({ reviewId, issue }: { reviewId: string;
       </div>
 
       {/* Context accordion (closed by default) */}
-      <div className="px-4 pt-3">
+      <div className="px-4 pt-3 shrink-0">
         <Accordion type="single" collapsible>
           <AccordionItem value="context">
             <AccordionTrigger className="px-3">
@@ -67,7 +68,7 @@ export default function IssueDetailView({ reviewId, issue }: { reviewId: string;
                 {issue.summary || issue.comment || "(no summary)"}
               </div>
             </AccordionTrigger>
-            <AccordionContent className="px-3">
+            <AccordionContent className="px-3 border-b-0">
               <div className="space-y-2">
                 <div>
                   <p className="text-xs text-gray-600 mb-1">対象テキスト</p>
@@ -86,7 +87,7 @@ export default function IssueDetailView({ reviewId, issue }: { reviewId: string;
       </div>
 
       {/* Status controls */}
-      <div className="px-4 py-2 border-t flex items-center gap-2">
+      <div className="px-4 py-2 flex items-center gap-2 shrink-0">
         <span className="text-xs text-gray-600">ステータス:</span>
         {statusBtn("未対応", "pending", "bg-gray-700")}
         {statusBtn("あとで", "later", "bg-amber-600")}
@@ -94,11 +95,19 @@ export default function IssueDetailView({ reviewId, issue }: { reviewId: string;
       </div>
 
       {/* Chat + Actions main area */}
-      <div className="flex-1 min-h-0 px-4 pb-4 overflow-auto">
-        <div className="grid gap-4" style={{ gridTemplateRows: "1fr auto" }}>
-          <ChatPane reviewId={reviewId} issueId={issue.issue_id} />
-          <SuggestionBox reviewId={reviewId} issueId={issue.issue_id} />
-        </div>
+      <div className="flex-1 min-h-0 px-4 pb-4 flex flex-col">
+        <Tabs defaultValue="chat" className="flex-1 min-h-0 flex flex-col">
+          <TabsList className="grid w-full grid-cols-2 shrink-0">
+            <TabsTrigger value="chat">チャット</TabsTrigger>
+            <TabsTrigger value="suggestion">修正案</TabsTrigger>
+          </TabsList>
+          <TabsContent value="chat" className="flex-1 min-h-0 mt-4">
+            <ChatPane reviewId={reviewId} issueId={issue.issue_id} />
+          </TabsContent>
+          <TabsContent value="suggestion" className="flex-1 min-h-0 mt-4">
+            <SuggestionBox reviewId={reviewId} issueId={issue.issue_id} />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
@@ -109,10 +118,12 @@ function ChatPane({ reviewId, issueId }: { reviewId: string; issueId: string }) 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement | null>(null);
+  const [input, setInput] = useState("");
 
   const ask = async (q: string) => {
     q = (q || "").trim();
     if (!q) return;
+    setInput("");
     setError(null);
     setLoading(true);
     setHistory((h) => [...h, { role: "user", text: q }]);
@@ -131,8 +142,8 @@ function ChatPane({ reviewId, issueId }: { reviewId: string; issueId: string }) 
   }, [history.length]);
 
   return (
-    <div className="flex flex-col h-full border rounded p-3">
-      <StickToBottom className="flex-1 min-h-0 relative">
+    <div className="flex h-full min-h-0 flex-col border rounded p-3">
+      <StickToBottom className="flex-1 min-h-0 relative overflow-y-auto">
         <StickToBottom.Content className="space-y-3 text-sm">
           {history.length === 0 && <p className="text-gray-500">この指摘についてAIに質問できます。</p>}
           {history.map((m, idx) => (
@@ -148,14 +159,19 @@ function ChatPane({ reviewId, issueId }: { reviewId: string; issueId: string }) 
       </StickToBottom>
       {error && <p className="text-red-600 text-xs mt-2">{error}</p>}
       <PromptInput
-        className="mt-3"
-        onSubmit={(msg, e) => {
+        className="mt-3 shrink-0"
+        onSubmit={(_, e) => {
           e.preventDefault();
-          if (!loading) void ask(msg.text || "");
+          if (!loading) void ask(input);
         }}
       >
         <PromptInputBody>
-          <PromptInputTextarea placeholder="質問を入力..." />
+          <PromptInputTextarea
+            placeholder="質問を入力..."
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            className="resize-none max-h-32 overflow-y-auto"
+          />
           <PromptInputToolbar>
             <div />
             <PromptInputSubmit status={loading ? "submitted" : undefined} />

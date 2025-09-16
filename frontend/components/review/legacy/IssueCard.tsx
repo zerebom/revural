@@ -19,10 +19,10 @@ export default function IssueCard({
   position: number; // 1-based index
   total: number;
 }) {
-  const priorityVariant = useMemo<"default" | "secondary" | "destructive" | "outline" | null | undefined>(() => {
-    if (issue.priority === 1) return "destructive"; // high
-    if (issue.priority === 2) return "default"; // mid
-    return "secondary"; // low
+  const badgeClass = useMemo(() => {
+    if (issue.priority === 1) return "bg-red-100 text-red-800 border-red-200"; // high
+    if (issue.priority === 2) return "bg-amber-100 text-amber-800 border-amber-200"; // mid
+    return "bg-gray-100 text-gray-800 border-gray-200"; // low
   }, [issue.priority]);
 
   const avatarInitial = issue.agent_name?.[0]?.toUpperCase() ?? "A";
@@ -39,7 +39,7 @@ export default function IssueCard({
             <p className="text-xs text-gray-600">{issue.agent_name} の指摘</p>
           </div>
         </div>
-        <Badge variant={priorityVariant}>優先度 {issue.priority}</Badge>
+        <Badge className={badgeClass}>優先度 {issue.priority}</Badge>
       </CardHeader>
 
       <CardContent className="space-y-3">
