@@ -10,6 +10,7 @@ export interface Issue {
   summary: string;
   comment: string;
   original_text: string;
+  status?: string;
   // ハイライト位置情報（バックエンド対応前は未設定の可能性あり）
   span?: IssueSpan;
 }

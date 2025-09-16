@@ -98,3 +98,15 @@ class MockService(AbstractReviewService):
             f"（モック回答）『{issue.original_text}』に関するご質問: {question_text}\n"
             "まずは要件の明確化と簡易な対策から検討してください。"
         )
+
+    def update_issue_status(self, review_id: str, issue_id: str, status: str) -> bool:
+        session = self._store.get(review_id)
+        if not session or not session.issues:
+            return False
+        issues: list[Issue] = cast("list[Issue]", session.issues)
+        for issue in issues:
+            if issue.issue_id == issue_id:
+                # api.schemas.Issue には optional な status フィールドがあるため、直接更新可能
+                issue.status = status
+                return True
+        return False

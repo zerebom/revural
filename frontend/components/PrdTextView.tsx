@@ -119,7 +119,7 @@ export default function PrdTextView({ prdText, issues, expandedIssueId, onSelect
             mark: ({ node, children, ...props }) => {
               // Try both hyphenated and camel-cased keys depending on how sanitizer mapped them
               const anyProps = props as Record<string, unknown>;
-              const nodeProps = (node as any)?.properties || {};
+              const nodeProps = ((node as unknown as { properties?: Record<string, unknown> })?.properties) || {};
               const idFromProps = typeof anyProps["data-issue-id"] === "string" ? (anyProps["data-issue-id"] as string) : undefined;
               const idFromNode =
                 typeof nodeProps["data-issue-id"] === "string"

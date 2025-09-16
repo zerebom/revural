@@ -44,4 +44,10 @@ export const api = {
       `/reviews/${review_id}/issues/${issue_id}/apply_suggestion`,
       { method: "POST" }
     ),
+
+  updateIssueStatus: (review_id: string, issue_id: string, status: string) =>
+    http<{ status: "success" | "failed" }>(
+      `/reviews/${review_id}/issues/${issue_id}/status`,
+      { method: "PATCH", body: JSON.stringify({ status }) }
+    ),
 };

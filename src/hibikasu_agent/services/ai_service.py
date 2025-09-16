@@ -76,3 +76,15 @@ class AiService(AbstractReviewService):
             return
         sess.issues = issues
         sess.status = "completed"
+
+    def update_issue_status(self, review_id: str, issue_id: str, status: str) -> bool:
+        sess = self._reviews.get(review_id)
+        if not sess or not sess.issues:
+            return False
+        issues: list[Issue] = cast("list[Issue]", sess.issues)
+        for iss in issues:
+            if iss.issue_id == issue_id:
+                # The API Issue model has an optional status field
+                iss.status = status
+                return True
+        return False
