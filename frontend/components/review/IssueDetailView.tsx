@@ -109,7 +109,7 @@ export default function IssueDetailView({ reviewId, issue }: { reviewId: string;
             <TabsTrigger value="suggestion">修正案</TabsTrigger>
           </TabsList>
           <TabsContent value="chat" className="flex-1 min-h-0 mt-4 rounded-lg bg-white p-4">
-            <ChatPane reviewId={reviewId} issueId={issue.issue_id} />
+            <ChatPane reviewId={reviewId} issueId={issue.issue_id} initialMessage={issue.comment} />
           </TabsContent>
           <TabsContent value="suggestion" className="flex-1 min-h-0 mt-4 rounded-lg bg-white p-4">
             <SuggestionBox reviewId={reviewId} issueId={issue.issue_id} />
@@ -120,12 +120,26 @@ export default function IssueDetailView({ reviewId, issue }: { reviewId: string;
   );
 }
 
-function ChatPane({ reviewId, issueId }: { reviewId: string; issueId: string }) {
-  const [history, setHistory] = useState<{ role: "user" | "ai"; text: string }[]>([]);
+function ChatPane({
+  reviewId,
+  issueId,
+  initialMessage,
+}: {
+  reviewId: string;
+  issueId: string;
+  initialMessage?: string;
+}) {
+  const [history, setHistory] = useState<{ role: "user" | "ai"; text: string }[]>(
+    initialMessage ? [{ role: "ai", text: initialMessage }] : []
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement | null>(null);
   const [input, setInput] = useState("");
+
+  useEffect(() => {
+    setHistory(initialMessage ? [{ role: "ai", text: initialMessage }] : []);
+  }, [issueId, initialMessage]);
 
   const ask = async (q: string) => {
     q = (q || "").trim();

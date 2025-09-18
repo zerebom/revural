@@ -8,8 +8,7 @@ import { Bar, BarChart, CartesianGrid, Pie, PieChart, ResponsiveContainer, Toolt
 import Header from "@/components/layout/Header";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { api } from "@/lib/api";
-import { AgentCount, ReviewSummaryResponse, StatusCount } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { ReviewSummaryResponse, StatusCount } from "@/lib/types";
 import { ChartContainer, ChartTooltipContent, ChartEmptyState, ChartConfig } from "@/components/ui/chart";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -91,7 +90,6 @@ export default function SummaryPage({ reviewId }: { reviewId: string }) {
   );
   const [exporting, setExporting] = useState(false);
 
-  const totalIssues = data?.statistics.total_issues ?? 0;
   const onBack = useCallback(() => {
     router.push(`/reviews/${reviewId}`);
   }, [reviewId, router]);
