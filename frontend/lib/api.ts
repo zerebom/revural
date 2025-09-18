@@ -1,4 +1,4 @@
-import { ReviewStatusResponse, ReviewStartResponse } from "./types";
+import { ReviewStatusResponse, ReviewStartResponse, ReviewSummaryResponse } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
@@ -50,4 +50,6 @@ export const api = {
       `/reviews/${review_id}/issues/${issue_id}/status`,
       { method: "PATCH", body: JSON.stringify({ status }) }
     ),
+
+  getReviewSummary: (review_id: string) => http<ReviewSummaryResponse>(`/reviews/${review_id}/summary`),
 };
