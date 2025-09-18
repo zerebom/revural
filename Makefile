@@ -225,9 +225,26 @@ clean:
 	find . -type d -name "htmlcov" -exec rm -rf {} +
 	find . -type f -name ".coverage" -delete
 
+# Development servers
+dev:
+	@echo "Starting both backend and frontend servers..."
+	@echo "Backend: http://localhost:8000"
+	@echo "Frontend: http://localhost:3000"
+	@echo "Press Ctrl+C to stop both servers"
+	@bash -c 'trap "echo Stopping servers...; kill -TERM %1 %2 2>/dev/null; wait; exit" INT TERM; \
+	(uv run uvicorn src.hibikasu_agent.api.main:app --reload --port $${API_PORT:-8000} 2>&1 | sed "s/^/[BACKEND] /") & \
+	BACKEND_PID=$$!; \
+	(cd frontend && pnpm dev 2>&1 | sed "s/^/[FRONTEND] /") & \
+	FRONTEND_PID=$$!; \
+	wait'
+
 # FastAPI dev server
 dev-api:
-	uv run uvicorn hibikasu_agent.api.main:app --reload --port $${API_PORT:-8000}
+	uv run uvicorn src.hibikasu_agent.api.main:app --reload --port $${API_PORT:-8000}
+
+# Frontend dev server
+dev-front:
+	cd frontend && pnpm dev
 
 # Start API in AI orchestrator mode (requires ADK dependencies and credentials)
 dev-api-ai:

@@ -11,6 +11,7 @@ from hibikasu_agent.api.schemas import (
     DialogResponse,
     ReviewRequest,
     ReviewResponse,
+    ReviewSummaryResponse,
     StatusResponse,
     SuggestResponse,
     UpdateStatusRequest,
@@ -110,3 +111,11 @@ async def update_issue_status_endpoint(
     if not success:
         raise HTTPException(status_code=404, detail="Issue not found")
     return UpdateStatusResponse(status="success")
+
+
+@router.get("/reviews/{review_id}/summary", response_model=ReviewSummaryResponse)
+async def get_review_summary(
+    review_id: str, service: AbstractReviewService = Depends(get_review_service)
+) -> ReviewSummaryResponse:
+    data = service.get_review_summary(review_id)
+    return ReviewSummaryResponse.model_validate(data)

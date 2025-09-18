@@ -94,3 +94,34 @@ class UpdateStatusResponse(BaseModel):
     """Response for status update operations."""
 
     status: Literal["success", "failed"]
+
+
+class StatusCount(BaseModel):
+    """Aggregated count per issue status."""
+
+    key: str
+    label: str
+    count: int
+
+
+class AgentCount(BaseModel):
+    """Aggregated count per agent."""
+
+    agent_name: str
+    count: int
+
+
+class SummaryStatistics(BaseModel):
+    """Statistics block for the summary view."""
+
+    total_issues: int = 0
+    status_counts: list[StatusCount] = Field(default_factory=list)
+    agent_counts: list[AgentCount] = Field(default_factory=list)
+
+
+class ReviewSummaryResponse(BaseModel):
+    """Response payload for the summary endpoint."""
+
+    status: Literal["processing", "completed", "failed", "not_found"]
+    statistics: SummaryStatistics
+    issues: list[Issue]

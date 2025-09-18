@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from .reviews import (
+    AgentCount,
     ApplySuggestionResponse,
     DialogRequest,
     DialogResponse,
@@ -8,8 +9,11 @@ from .reviews import (
     IssueSpan,
     ReviewRequest,
     ReviewResponse,
+    ReviewSummaryResponse,
+    StatusCount,
     StatusResponse,
     SuggestResponse,
+    SummaryStatistics,
     UpdateStatusRequest,
     UpdateStatusResponse,
 )
@@ -20,6 +24,10 @@ __all__ = [
     "ReviewResponse",
     "Issue",
     "StatusResponse",
+    "ReviewSummaryResponse",
+    "SummaryStatistics",
+    "StatusCount",
+    "AgentCount",
     "DialogRequest",
     "DialogResponse",
     "SuggestResponse",

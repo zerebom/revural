@@ -26,3 +26,26 @@ export interface ReviewStatusResponse {
 export interface ReviewStartResponse {
   review_id: string;
 }
+
+export interface StatusCount {
+  key: string;
+  label: string;
+  count: number;
+}
+
+export interface AgentCount {
+  agent_name: string;
+  count: number;
+}
+
+export interface SummaryStatistics {
+  total_issues: number;
+  status_counts: StatusCount[];
+  agent_counts: AgentCount[];
+}
+
+export interface ReviewSummaryResponse {
+  status: ReviewStatus;
+  statistics: SummaryStatistics;
+  issues: Issue[];
+}

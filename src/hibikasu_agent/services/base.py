@@ -72,3 +72,8 @@ class AbstractReviewService(ABC):
     def update_issue_status(self, review_id: str, issue_id: str, status: str) -> bool:
         """Updates the status of a specific issue and returns success."""
         ...
+
+    @abstractmethod
+    def get_review_summary(self, review_id: str) -> dict[str, Any]:
+        """Return aggregated summary data for the given review."""
+        ...
