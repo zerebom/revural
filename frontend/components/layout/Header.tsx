@@ -9,9 +9,19 @@ interface HeaderProps {
   onSummary?: () => void;
   onExport?: () => void;
   className?: string;
+  showSummaryButton?: boolean;
+  showExportButton?: boolean;
 }
 
-export default function Header({ title, onBack, onSummary, onExport, className }: HeaderProps) {
+export default function Header({
+  title,
+  onBack,
+  onSummary,
+  onExport,
+  className,
+  showSummaryButton = true,
+  showExportButton = true,
+}: HeaderProps) {
   return (
     <header
       className={cn(
@@ -39,20 +49,24 @@ export default function Header({ title, onBack, onSummary, onExport, className }
         </div>
       </div>
       <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={onSummary}
-          className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-1.5 typ-body-sm font-medium text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-50 whitespace-nowrap"
-        >
-          サマリー
-        </button>
-        <button
-          type="button"
-          onClick={onExport}
-          className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-1.5 typ-body-sm font-medium text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-50 whitespace-nowrap"
-        >
-          エクスポート
-        </button>
+        {showSummaryButton && (
+          <button
+            type="button"
+            onClick={onSummary}
+            className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-1.5 typ-body-sm font-medium text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-50 whitespace-nowrap"
+          >
+            サマリー
+          </button>
+        )}
+        {showExportButton && (
+          <button
+            type="button"
+            onClick={onExport}
+            className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-1.5 typ-body-sm font-medium text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-50 whitespace-nowrap"
+          >
+            エクスポート
+          </button>
+        )}
       </div>
     </header>
   );
