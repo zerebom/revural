@@ -42,9 +42,5 @@ export default function ReviewDetailPage({ params }: { params: Promise<{ id: str
   if (data?.status === "failed") return <p className="text-red-600 p-6">レビューの実行に失敗しました。</p>;
   if (data?.status === "not_found") return <p className="text-gray-600 p-6">レビューが見つかりません。</p>;
 
-  return (
-    <main className="min-h-screen p-6 sm:p-10 bg-gray-50">
-      <ReviewPage />
-    </main>
-  );
+  return <ReviewPage />;
 }

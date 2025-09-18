@@ -32,31 +32,18 @@ export default function IssueDetailView({ reviewId, issue }: { reviewId: string;
     }
   };
 
-  const statusBtn = (label: string, value: string, color: string) => (
-    <button
-      key={value}
-      onClick={() => void setStatus(value)}
-      disabled={saving !== null}
-      className={`px-3 py-1 rounded border text-sm ${
-        currentStatus === value
-          ? `${color} text-white border-transparent`
-          : `bg-white border-gray-300 text-gray-800 hover:bg-gray-50`
-      }`}
-    >
-      {label}
-    </button>
-  );
+  // stylingは親（JSX側）で決める方針に変更
 
   return (
-    <div className="flex h-full min-h-0 flex-col rounded border bg-white">
-      <div className="flex items-center gap-3 px-4 py-3 border-b shrink-0">
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex items-center gap-3 border-b px-4 py-3 shrink-0">
         <button
           onClick={() => setViewMode("list")}
-          className="text-sm px-2.5 py-1.5 rounded border border-gray-300 bg-white hover:bg-gray-50"
+          className="typ-body-sm inline-flex items-center rounded-lg border border-gray-300 px-2.5 py-1.5 text-gray-700 transition-colors hover:border-gray-400 hover:bg-gray-50 whitespace-nowrap"
         >
           ← 戻る
         </button>
-        <h3 className="text-base font-semibold">論点の深掘り</h3>
+        <h3 className="typ-heading-sm">論点の深掘り</h3>
       </div>
 
       {/* Context accordion (closed by default) */}
@@ -64,21 +51,21 @@ export default function IssueDetailView({ reviewId, issue }: { reviewId: string;
         <Accordion type="single" collapsible>
           <AccordionItem value="context">
             <AccordionTrigger className="px-3">
-              <div className="text-sm text-gray-900 truncate">
+              <div className="typ-body text-gray-900 truncate">
                 {issue.summary || issue.comment || "(no summary)"}
               </div>
             </AccordionTrigger>
             <AccordionContent className="px-3 border-b-0">
               <div className="space-y-2">
                 <div>
-                  <p className="text-xs text-gray-600 mb-1">対象テキスト</p>
-                  <blockquote className="whitespace-pre-wrap text-sm bg-gray-50/80 border-l-4 border-gray-200 rounded-md p-3.5 text-gray-800">
+                  <p className="typ-caption text-gray-600 mb-1">対象テキスト</p>
+                  <blockquote className="typ-body-sm whitespace-pre-wrap bg-gray-50/80 border-l-4 border-gray-200 rounded-md p-3.5 text-gray-800">
                     {issue.original_text}
                   </blockquote>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-600 mb-1">コメント</p>
-                  <p className="whitespace-pre-wrap text-sm text-gray-800">{issue.comment}</p>
+                  <p className="typ-caption text-gray-600 mb-1">コメント</p>
+                  <p className="typ-body whitespace-pre-wrap text-gray-800">{issue.comment}</p>
                 </div>
               </div>
             </AccordionContent>
@@ -86,25 +73,45 @@ export default function IssueDetailView({ reviewId, issue }: { reviewId: string;
         </Accordion>
       </div>
 
-      {/* Status controls */}
-      <div className="px-4 py-2 flex items-center gap-2 shrink-0">
-        <span className="text-xs text-gray-600">ステータス:</span>
-        {statusBtn("未対応", "pending", "bg-gray-700")}
-        {statusBtn("あとで", "later", "bg-amber-600")}
-        {statusBtn("対応済み", "done", "bg-emerald-600")}
+      {/* Status controls (Zone 2: 意思決定) */}
+      <div className="px-4 py-3 flex items-center gap-2 shrink-0 bg-slate-50">
+        <span className="typ-caption text-gray-600">ステータス:</span>
+        {(["pending", "later", "done"] as const).map((value) => {
+          const isActive = currentStatus === value;
+          const isPrimary = value === "done";
+          const base = "typ-body-sm px-3 py-1 rounded border whitespace-nowrap transition-colors";
+          const cls = isPrimary
+            ? isActive
+              ? `${base} bg-emerald-600 text-white border-emerald-600`
+              : `${base} bg-white text-gray-800 border-gray-300 hover:bg-emerald-50`
+            : isActive
+              ? `${base} bg-slate-50 text-slate-900 border-slate-400`
+              : `${base} bg-white text-gray-800 border-gray-300 hover:bg-gray-50`;
+          const label = value === "pending" ? "未対応" : value === "later" ? "あとで" : "対応済み";
+          return (
+            <button
+              key={value}
+              onClick={() => void setStatus(value)}
+              disabled={saving !== null}
+              className={cls}
+            >
+              {label}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Chat + Actions main area */}
+      {/* Chat + Actions main area (Zone 3: インタラクション) */}
       <div className="flex-1 min-h-0 px-4 pb-4 flex flex-col">
         <Tabs defaultValue="chat" className="flex-1 min-h-0 flex flex-col">
           <TabsList className="grid w-full grid-cols-2 shrink-0">
             <TabsTrigger value="chat">チャット</TabsTrigger>
             <TabsTrigger value="suggestion">修正案</TabsTrigger>
           </TabsList>
-          <TabsContent value="chat" className="flex-1 min-h-0 mt-4">
+          <TabsContent value="chat" className="flex-1 min-h-0 mt-4 rounded-lg bg-white p-4">
             <ChatPane reviewId={reviewId} issueId={issue.issue_id} />
           </TabsContent>
-          <TabsContent value="suggestion" className="flex-1 min-h-0 mt-4">
+          <TabsContent value="suggestion" className="flex-1 min-h-0 mt-4 rounded-lg bg-white p-4">
             <SuggestionBox reviewId={reviewId} issueId={issue.issue_id} />
           </TabsContent>
         </Tabs>
@@ -142,10 +149,10 @@ function ChatPane({ reviewId, issueId }: { reviewId: string; issueId: string }) 
   }, [history.length]);
 
   return (
-    <div className="flex h-full min-h-0 flex-col border rounded p-3">
+    <div className="flex h-full min-h-0 flex-col">
       <StickToBottom className="flex-1 min-h-0 relative overflow-y-auto">
-        <StickToBottom.Content className="space-y-3 text-sm">
-          {history.length === 0 && <p className="text-gray-500">この指摘についてAIに質問できます。</p>}
+        <StickToBottom.Content className="space-y-3 typ-body">
+          {history.length === 0 && <p className="typ-body text-gray-500">この指摘についてAIに質問できます。</p>}
           {history.map((m, idx) => (
             <MessageBubble key={idx} role={m.role}>
               <Streamdown className="prose prose-sm max-w-none [&_p]:m-0 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5 [&_code]:text-[85%]">
@@ -157,7 +164,7 @@ function ChatPane({ reviewId, issueId }: { reviewId: string; issueId: string }) 
         </StickToBottom.Content>
         <ScrollToBottomButton />
       </StickToBottom>
-      {error && <p className="text-red-600 text-xs mt-2">{error}</p>}
+      {error && <p className="typ-caption text-red-600 mt-2">{error}</p>}
       <PromptInput
         className="mt-3 shrink-0"
         onSubmit={(_, e) => {
@@ -210,7 +217,7 @@ function ScrollToBottomButton() {
   return (
     <button
       onClick={() => void scrollToBottom()}
-      className="absolute left-1/2 -translate-x-1/2 bottom-1 text-xs px-2 py-1 rounded bg-white/90 border shadow"
+      className="typ-caption absolute left-1/2 -translate-x-1/2 bottom-1 rounded border border-slate-200 bg-white/90 px-2 py-1 text-slate-600 transition-colors hover:border-slate-300"
     >
       最新メッセージへ
     </button>

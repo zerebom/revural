@@ -86,7 +86,7 @@ export default function PrdTextView({ prdText, issues, expandedIssueId, onSelect
   );
 
   return (
-    <div ref={containerRef} className="h-full overflow-auto rounded border bg-white p-4 text-sm leading-6">
+    <div ref={containerRef} className="typ-body h-full overflow-auto rounded-lg bg-slate-50/60 p-4">
       {!prdText && <p className="text-gray-500">PRDテキストが未設定です。</p>}
       <div className="prose prose-sm max-w-none">
         <ReactMarkdown

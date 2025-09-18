@@ -3,8 +3,23 @@
 
 /* Enforce light theme for MVP */
 :root {
-  --background: #ffffff;
+  --background: #f8f9fa;
   --foreground: #111827; /* gray-900 */
+
+  /* Typography scale */
+  --type-heading-lg: 1.75rem;   /* 28px */
+  --type-heading-md: 1.5rem;    /* 24px */
+  --type-heading-sm: 1.3125rem; /* 21px */
+  --type-heading-xs: 1.125rem;  /* 18px */
+  --type-body-lg: 1.0625rem;    /* 17px */
+  --type-body: 1rem;            /* 16px */
+  --type-body-sm: 0.9375rem;    /* 15px */
+  --type-caption: 0.8125rem;    /* 13px */
+
+  --type-line-tight: 1.25;
+  --type-line-regular: 1.55;
+  --type-line-loose: 1.7;
+  --type-letter-tight: -0.01em;
 }
 
 @theme inline {
@@ -13,7 +28,94 @@
   --font-sans: var(--font-noto-sans-jp);
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
+@layer base {
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-size: var(--type-body);
+    line-height: var(--type-line-regular);
+    letter-spacing: var(--type-letter-tight);
+    font-feature-settings: "palt" 1, "liga" 1;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    letter-spacing: -0.012em;
+    color: var(--foreground);
+  }
+
+  h1 { font-size: var(--type-heading-lg); line-height: var(--type-line-tight); }
+  h2 { font-size: var(--type-heading-md); line-height: var(--type-line-tight); }
+  h3 { font-size: var(--type-heading-sm); line-height: 1.35; }
+  h4 { font-size: var(--type-heading-xs); line-height: 1.35; }
+  h5 { font-size: var(--type-body-lg); line-height: 1.4; }
+  h6 { font-size: var(--type-body); line-height: 1.4; }
+}
+
+@layer utilities {
+  .typ-heading-lg {
+    font-size: var(--type-heading-lg);
+    line-height: var(--type-line-tight);
+    font-weight: 600;
+    letter-spacing: -0.012em;
+  }
+
+  .typ-heading-md {
+    font-size: var(--type-heading-md);
+    line-height: var(--type-line-tight);
+    font-weight: 600;
+    letter-spacing: -0.012em;
+  }
+
+  .typ-heading-sm {
+    font-size: var(--type-heading-sm);
+    line-height: 1.35;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .typ-heading-xs {
+    font-size: var(--type-heading-xs);
+    line-height: 1.4;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .typ-body-lg {
+    font-size: var(--type-body-lg);
+    line-height: var(--type-line-regular);
+    letter-spacing: var(--type-letter-tight);
+  }
+
+  .typ-body {
+    font-size: var(--type-body);
+    line-height: var(--type-line-regular);
+    letter-spacing: var(--type-letter-tight);
+  }
+
+  .typ-body-sm {
+    font-size: var(--type-body-sm);
+    line-height: 1.5;
+    letter-spacing: var(--type-letter-tight);
+  }
+
+  .typ-caption {
+    font-size: var(--type-caption);
+    line-height: 1.45;
+    letter-spacing: 0.01em;
+  }
+
+  .typ-label {
+    font-size: var(--type-body-sm);
+    line-height: 1.4;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .typ-mono {
+    font-family: "JetBrains Mono", "SFMono-Regular", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+      "Liberation Mono", "Courier New", monospace;
+    letter-spacing: 0.02em;
+  }
 }
