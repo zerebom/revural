@@ -1,9 +1,22 @@
 """Tools for the Parallel Orchestrator workflow."""
 
+from typing import Any
 from uuid import uuid4
 
+from google.adk.tools.tool_context import ToolContext
+from pydantic import ValidationError
+
+from hibikasu_agent.constants import (
+    AGENT_DISPLAY_NAMES,
+    AGENT_STATE_KEYS,
+    ENGINEER_AGENT_KEY,
+    PM_AGENT_KEY,
+    QA_AGENT_KEY,
+    UX_AGENT_KEY,
+)
 from hibikasu_agent.schemas.models import (
     FinalIssue,
+    FinalIssuesResponse,
     IssueItem,
     IssuesResponse,
 )
@@ -12,17 +25,21 @@ from hibikasu_agent.utils.logging_config import get_logger
 logger = get_logger(__name__)
 
 
-def _to_final_issues(agent_name: str, issues_resp: IssuesResponse) -> list[FinalIssue]:
+MAX_ISSUES_PER_AGENT = 5
+
+
+def _to_final_issues(agent_key: str, issues_resp: IssuesResponse) -> list[FinalIssue]:
     """Convert a typed IssuesResponse to FinalIssue items for a given agent."""
     final_items: list[FinalIssue] = []
-    for item in issues_resp.issues:
+    items = issues_resp.issues[:MAX_ISSUES_PER_AGENT]
+    for item in items:
         # Items are already IssueItem; normalize severity and map
         parsed: IssueItem = item
         final_items.append(
             FinalIssue(
                 issue_id=str(uuid4()),
                 priority=0,  # set later
-                agent_name=agent_name,
+                agent_name=AGENT_DISPLAY_NAMES.get(agent_key, agent_key),
                 severity=parsed.normalize_severity(),
                 comment=parsed.comment,
                 original_text=parsed.original_text,
@@ -31,51 +48,48 @@ def _to_final_issues(agent_name: str, issues_resp: IssuesResponse) -> list[Final
     return final_items
 
 
-# def aggregate_final_issues(
-#     prd_text: str,
-# tool_context: ToolContext,
-# ) -> list[FinalIssue]:
-#     """Aggregate specialist issues from state and return FinalIssuesResponse.
+def _load_issues_from_state(state: dict[str, Any], key: str) -> IssuesResponse:
+    raw = state.get(key)
+    if isinstance(raw, IssuesResponse):
+        return raw
+    if isinstance(raw, dict):
+        try:
+            return IssuesResponse.model_validate(raw)
+        except ValidationError:
+            logger.error("Failed to parse issues for %s", key, exc_info=True)
+            raise
+    if raw is None:
+        return IssuesResponse(issues=[])
+    logger.error("Unexpected state payload for %s: %r", key, type(raw))
+    raise TypeError(f"Unexpected state payload type for {key}: {type(raw)!r}")
 
-#     This tool reads specialist outputs directly from `tool_context.state`
-#     and parses them into Pydantic models before aggregation.
-#     """
-#     logger.info("--- AGGREGATE TOOL: START (reading from state) ---")
 
-#     state = tool_context.state
-#     engineer_issues_dict = state.get("engineer_issues") or {}
-#     ux_designer_issues_dict = state.get("ux_designer_issues") or {}
-#     qa_tester_issues_dict = state.get("qa_tester_issues") or {}
-#     pm_issues_dict = state.get("pm_issues") or {}
+def aggregate_final_issues(tool_context: ToolContext) -> FinalIssuesResponse:
+    """Aggregate specialist outputs stored in state into FinalIssuesResponse."""
 
-#     # Explicitly parse dicts from state into Pydantic models
-#     engineer_issues = IssuesResponse(
-#         **(engineer_issues_dict if isinstance(engineer_issues_dict, dict) else {})
-#     )
-#     ux_designer_issues = IssuesResponse(
-#         **(ux_designer_issues_dict if isinstance(ux_designer_issues_dict, dict) else {})
-#     )
-#     qa_tester_issues = IssuesResponse(
-#         **(qa_tester_issues_dict if isinstance(qa_tester_issues_dict, dict) else {})
-#     )
-#     pm_issues = IssuesResponse(
-#         **(pm_issues_dict if isinstance(pm_issues_dict, dict) else {})
-#     )
+    state = getattr(tool_context, "state", {}) or {}
 
-#     final_items: list[FinalIssue] = []
+    engineer = _load_issues_from_state(state, AGENT_STATE_KEYS[ENGINEER_AGENT_KEY])
+    ux = _load_issues_from_state(state, AGENT_STATE_KEYS[UX_AGENT_KEY])
+    qa = _load_issues_from_state(state, AGENT_STATE_KEYS[QA_AGENT_KEY])
+    pm = _load_issues_from_state(state, AGENT_STATE_KEYS[PM_AGENT_KEY])
 
-#     final_items.extend(_to_final_issues("engineer", engineer_issues))
-#     final_items.extend(_to_final_issues("ux_designer", ux_designer_issues))
-#     final_items.extend(_to_final_issues("qa_tester", qa_tester_issues))
-#     final_items.extend(_to_final_issues("pm", pm_issues))
+    final_items: list[FinalIssue] = []
+    final_items.extend(_to_final_issues(ENGINEER_AGENT_KEY, engineer))
+    final_items.extend(_to_final_issues(UX_AGENT_KEY, ux))
+    final_items.extend(_to_final_issues(QA_AGENT_KEY, qa))
+    final_items.extend(_to_final_issues(PM_AGENT_KEY, pm))
 
-#     # Priority by severity order (stable within same severity)
-#     severity_order = {"High": 0, "Mid": 1, "Low": 2}
-#     final_items.sort(key=lambda x: severity_order.get(x.severity, 3))
-#     for idx, item in enumerate(final_items, start=1):
-#         item.priority = idx
+    severity_order = {"High": 0, "Mid": 1, "Low": 2}
+    final_items.sort(key=lambda item: severity_order.get(item.severity, 3))
+    for idx, issue in enumerate(final_items, start=1):
+        issue.priority = idx
 
-#     resp = FinalIssuesResponse(final_issues=final_items)
-#     logger.info(f"--- AGGREGATE TOOL: END ---, Created {len(final_items)} final issues.")
-#     logger.info(f"  - Response object: {resp.model_dump_json(indent=2)}")
-#     return resp
+    response = FinalIssuesResponse(final_issues=final_items)
+    # Persist for downstream consumers (ADKService.run_review_async expects this key)
+    state["final_review_issues"] = response.model_dump()
+    logger.info("Aggregated final issues", count=len(final_items))
+    return response
+
+
+AGGREGATE_FINAL_ISSUES_TOOL = aggregate_final_issues

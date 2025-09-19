@@ -5,11 +5,22 @@ disabled, then aggregates their typed outputs into FinalIssuesResponse.
 """
 
 from google.adk.agents import LlmAgent, SequentialAgent
-from google.adk.tools import AgentTool
+from google.adk.tools import AgentTool, FunctionTool
 
+from hibikasu_agent.agents.parallel_orchestrator.tools import AGGREGATE_FINAL_ISSUES_TOOL
 from hibikasu_agent.agents.specialist import (
     create_role_agents,
     create_specialist_from_role,
+)
+from hibikasu_agent.constants import (
+    ENGINEER_AGENT_KEY,
+    ENGINEER_ISSUES_STATE_KEY,
+    PM_AGENT_KEY,
+    PM_ISSUES_STATE_KEY,
+    QA_AGENT_KEY,
+    QA_ISSUES_STATE_KEY,
+    UX_AGENT_KEY,
+    UX_ISSUES_STATE_KEY,
 )
 from hibikasu_agent.schemas.models import FinalIssuesResponse
 
@@ -28,34 +39,34 @@ def create_parallel_review_agent(model: str = "gemini-2.5-flash") -> SequentialA
     # 1) Specialists with explicit output keys
     engineer = create_specialist_from_role(
         "engineer",
-        name="engineer_specialist",
+        name=ENGINEER_AGENT_KEY,
         description="バックエンドエンジニアの専門的観点からPRDをレビュー",
         model=model,
-        output_key="engineer_issues",
+        output_key=ENGINEER_ISSUES_STATE_KEY,
     )
 
     ux = create_specialist_from_role(
         "ux_designer",
-        name="ux_designer_specialist",
+        name=UX_AGENT_KEY,
         description="UXデザイナーの専門的観点からPRDをレビュー",
         model=model,
-        output_key="ux_designer_issues",
+        output_key=UX_ISSUES_STATE_KEY,
     )
 
     qa = create_specialist_from_role(
         "qa_tester",
-        name="qa_tester_specialist",
+        name=QA_AGENT_KEY,
         description="QAテスターの専門的観点からPRDをレビュー",
         model=model,
-        output_key="qa_tester_issues",
+        output_key=QA_ISSUES_STATE_KEY,
     )
 
     pm = create_specialist_from_role(
         "pm",
-        name="pm_specialist",
+        name=PM_AGENT_KEY,
         description="プロダクトマネージャーの専門的観点からPRDをレビュー",
         model=model,
-        output_key="pm_issues",
+        output_key=PM_ISSUES_STATE_KEY,
     )
 
     # 2) Wrap specialists as AgentTools with summarization disabled
@@ -72,62 +83,23 @@ def create_parallel_review_agent(model: str = "gemini-2.5-flash") -> SequentialA
         description="Runs four specialist tools.",
         instruction=(
             "You must call all four of the following tools using the user's input: "
-            "`engineer_specialist`, `ux_designer_specialist`, "
-            "`qa_tester_specialist`, `pm_specialist`."
+            f"`{ENGINEER_AGENT_KEY}`, `{UX_AGENT_KEY}`, "
+            f"`{QA_AGENT_KEY}`, `{PM_AGENT_KEY}`."
         ),
         tools=[engineer_tool, ux_tool, qa_tool, pm_tool],
     )
 
-    # 4) Step 2 Agent: Aggregates the results from state.
-    # aggregate_tool = FunctionTool(aggregate_final_issues)
+    aggregate_tool = FunctionTool(func=AGGREGATE_FINAL_ISSUES_TOOL)
+
     merger = LlmAgent(
         name="IssueAggregatorMerger",
         model=model,
-        description=("Aggregates parallel specialist outputs into a prioritized final list."),
+        description="Calls a deterministic tool to aggregate specialist outputs.",
         instruction=(
-            "# あなたの役割\n"
-            "あなたは、4つの専門家チーム（エンジニア、UXデザイナー、QAテスター、プロダクトマネージャー）からの"
-            "PRDレビュー結果を集約し、経営陣への報告に向けて最終的な指摘事項リストを作成する、"
-            "経験豊富なシニアプロダクトマネージャーです。あなたの仕事は、単なる情報の結合ではなく、"
-            "高度な分析と判断を通じて、本質的で実行可能なアクションアイテムへと昇華させることです。\n\n"
-            "# 入力情報\n"
-            "あなたは、以下の4つのJSONオブジェクトをコンテキストとして受け取ります。これらは各専門家チームからの報告書です。\n"
-            "- エンジニアチームの指摘: {engineer_issues}\n"
-            "- UXデザイナーチームの指摘: {ux_designer_issues}\n"
-            "- QAテスターチームの指摘: {qa_tester_issues}\n"
-            "- プロダクトマネージャーチームの指摘: {pm_issues}\n\n"
-            "# あなたが実行すべきタスク\n"
-            "以下の思考プロセスに従い、最終的な指摘事項リストを生成してください。\n\n"
-            "**Step 1: 全指摘事項の把握**\n"
-            "まず、4つのチームから提出されたすべての指摘事項（issues）に注意深く目を通し、全体像を完全に理解してください。\n\n"
-            "**Step 2: 重複・関連指摘の特定とグループ化**\n"
-            "次に、異なるチームから提出されているが、根本的な原因や対象が同じである指摘事項を特定します。\n"
-            "- 例1：「パスワードリセット機能がない」という指摘がUXデザイナーとQAテスターの両方から挙がっている。\n"
-            "- 例2：「セキュアなセッション管理」に関する指摘がエンジニアとQAテスターから挙がっている。\n"
-            "これらの重複または強く関連する指摘を、心の中でグループ化してください。\n\n"
-            "**Step 3: 指摘の統合と洗練**\n"
-            "グループ化した指摘を、最も的確で包括的な一つの指摘に統合します。\n"
-            "- **コメントの統合**: 各チームの視点を組み合わせ、より質の高いコメントに書き換えます。"
-            "なぜそれが問題なのか、どのような影響があるのかを明確にしてください。\n"
-            "- **担当エージェントの決定**: 統合後の指摘は、その内容を最も代表する専門家チームの名前を"
-            "`agent_name`として設定してください。判断に迷う場合は、より影響範囲の広い視点"
-            "（例：技術的な問題よりもプロダクト戦略の問題ならPM）を優先してください。かならず、(ux,qa,engineer,pm)のどれかを設定してください。\n\n"
-            "- **重要度の再評価**: `severity`は、統合された視点から再評価してください。\n\n"
-            "**Step 4: 全体最適化のための優先順位付け**\n"
-            "統合・洗練されたすべての指摘事項をリストアップし、ビジネス全体へのインパクト、"
-            "ユーザー体験への影響、開発の緊急性、実現可能性を総合的に考慮して、"
-            "1から始まる（`priority`）を付け直してください。1が高、2が中、3が低です。重複して良いです"
-            "これがあなたの最も重要な仕事です。数値が小さいほど優先度が高くなります。\n\n"
-            "**Step 5: 最終出力の生成**\n"
-            "最後に、上記のプロセスを経て完成した指摘事項のリストを、以下のスキーマに厳密に従った単一のJSONオブジェクトとして出力してください。\n\n"
-            "# 出力に関する厳格なルール\n"
-            "- あなたの応答は、JSONオブジェクト**のみ**でなければなりません。\n"
-            "- 説明文、前置き、後書き、マークダウンのコードフェンス（```json）など、"
-            "JSON以外のテキストを一切含めないでください。\n"
-            '- 出力は必ず `{{"final_review_issues": [...]}}` というキー構造を持つ必要があります。\n\n'
-            "思考プロセスを丁寧に行い、最高品質の最終報告書を作成してください。"
+            "Call the `aggregate_final_issues` tool exactly once with no arguments. "
+            "Do not rewrite or summarize issues manually. Return the tool result as-is."
         ),
-        # tools=[aggregate_tool],
+        tools=[aggregate_tool],
         output_schema=FinalIssuesResponse,
         output_key="final_review_issues",
     )
