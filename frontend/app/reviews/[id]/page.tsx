@@ -38,7 +38,15 @@ export default function ReviewDetailPage({ params }: { params: Promise<{ id: str
   }, [data, setIssues, expandedIssueId, setExpandedIssueId, setPrdText]);
 
   if (error) return <p className="text-red-600 p-6">読み込みに失敗しました: {String(error)}</p>;
-  if (isLoading || data?.status === "processing") return <LoadingSpinner />;
+  if (isLoading || data?.status === "processing")
+    return (
+      <LoadingSpinner
+        progress={data?.progress}
+        phaseMessage={data?.phase_message}
+        expectedAgents={data?.expected_agents}
+        completedAgents={data?.completed_agents}
+      />
+    );
   if (data?.status === "failed") return <p className="text-red-600 p-6">レビューの実行に失敗しました。</p>;
   if (data?.status === "not_found") return <p className="text-gray-600 p-6">レビューが見つかりません。</p>;
 

@@ -3,6 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import type { Issue } from "@/lib/types";
+import { shortenOriginalText } from "@/lib/text";
 import { getAgentColorClasses } from "@/lib/utils";
 import { useReviewStore } from "@/store/useReviewStore";
 
@@ -54,7 +55,7 @@ export default function IssueAccordionItem({
           <div>
             <p className="typ-caption text-slate-500 mb-1">元テキスト</p>
             <blockquote className="typ-body-sm whitespace-pre-wrap rounded-md bg-slate-50 p-3 pl-4 text-slate-800 border-l-4 border-slate-200">
-              {issue.original_text}
+              {shortenOriginalText(issue.original_text)}
             </blockquote>
           </div>
           <div>

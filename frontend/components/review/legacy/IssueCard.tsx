@@ -1,6 +1,7 @@
 "use client";
 
 import type { Issue } from "@/lib/types";
+import { shortenOriginalText } from "@/lib/text";
 import ChatWindow from "./ChatWindow";
 import SuggestionBox from "./SuggestionBox";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,7 +49,7 @@ export default function IssueCard({
         <div>
           <p className="text-xs text-gray-600 mb-1">元テキスト</p>
           <blockquote className="whitespace-pre-wrap text-sm bg-gray-50 border-l-4 border-gray-300 rounded p-3 text-gray-800">
-            {issue.original_text}
+            {shortenOriginalText(issue.original_text)}
           </blockquote>
         </div>
       </CardContent>
