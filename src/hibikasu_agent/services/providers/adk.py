@@ -3,9 +3,11 @@ from __future__ import annotations
 import os
 import re
 import time
+from collections.abc import Callable
 from contextlib import suppress
 from uuid import uuid4
 
+from google.adk.events.event import Event
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types as genai_types
@@ -34,7 +36,19 @@ class ADKService:
         model_name = os.getenv("ADK_MODEL") or "gemini-2.5-flash"
         self._coordinator_agent = create_coordinator_agent(model=model_name)
         self._chat_session_service = InMemorySessionService()
+        self._default_specialist_agents: list[str] = [
+            "engineer_specialist",
+            "ux_designer_specialist",
+            "qa_tester_specialist",
+            "pm_specialist",
+        ]
         logger.info("ADKService initialized.")
+
+    @property
+    def default_review_agents(self) -> list[str]:
+        """Returns the default specialist agent names involved in the review."""
+
+        return list(self._default_specialist_agents)
 
     def _normalize_text(self, text: str) -> str:
         """テキストから空白文字（スペース、タブ、改行など）をすべて除去する"""
@@ -106,7 +120,12 @@ class ADKService:
 
         return IssueSpan(start_index=actual_start_index, end_index=actual_end_index)
 
-    async def run_review_async(self, prd_text: str) -> list[ApiIssue]:
+    async def run_review_async(
+        self,
+        prd_text: str,
+        *,
+        on_event: Callable[[Event], None] | None = None,
+    ) -> list[ApiIssue]:
         """
         PRDのレビューを非同期で実行する。呼び出し毎に独立した ADK セッションを生成・破棄する。
         """
@@ -125,9 +144,13 @@ class ADKService:
             content = genai_types.Content(role="user", parts=[genai_types.Part(text=str(prd_text))])
 
             _t0 = time.perf_counter()
-            async for _event in runner.run_async(user_id=user_id, session_id=session_id, new_message=content):
-                # Drain events; the final structured output is in session state
-                pass
+            async for event in runner.run_async(user_id=user_id, session_id=session_id, new_message=content):
+                # Drain events; optionally hand them to caller for progress updates
+                if on_event:
+                    try:
+                        on_event(event)
+                    except Exception as cb_err:
+                        logger.warning("on_event callback failed", exc_info=cb_err)
             _elapsed_ms = int((time.perf_counter() - _t0) * 1000)
 
             sess = await service.get_session(app_name=app_name, user_id=user_id, session_id=session_id)
@@ -181,20 +204,8 @@ class ADKService:
                     logger.warning("Skipping invalid ADK issue: %s | data=%s", err, item)
             return api_issues
         except Exception as err:  # nosec B110
-            detail = str(err)
-            sub = getattr(err, "exceptions", None)
-            if isinstance(sub, list | tuple) and sub:
-                detail = f"{detail} | first_sub={sub[0]}"
-            return [
-                ApiIssue(
-                    issue_id="AI-ERROR",
-                    priority=1,
-                    agent_name="AI-Orchestrator",
-                    summary="ADK実行エラー",
-                    comment=f"ADK実行に失敗しました: {detail}",
-                    original_text=str(prd_text)[:120] or "(empty)",
-                )
-            ]
+            logger.error("ADK run failed", extra={"error": str(err)}, exc_info=True)
+            raise
 
     async def answer_dialog_async(self, issue: ApiIssue, question_text: str) -> str:
         """
