@@ -38,7 +38,7 @@ def test_ai_mode_uses_ai_services(monkeypatch, client_ai_mode):
         )
     ]
 
-    async def impl_async(self, prd_text: str):  # type: ignore[no-untyped-def]
+    async def impl_async(self, prd_text: str, *, on_event=None):  # type: ignore[no-untyped-def]
         return mock_issues
 
     monkeypatch.setattr(ADKService, "run_review_async", impl_async, raising=False)
