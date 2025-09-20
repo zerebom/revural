@@ -48,7 +48,8 @@ def test_kickoff_review_populates_session():
 async def test_answer_dialog_calls_provider():
     svc = AiService(adk_service=_StubADK())
     rid = svc.new_review_session("PRD for unit test")
-    svc.kickoff_review(rid)
+    # kickoff_review is synchronous but uses asyncio.run internally; run it off the event loop.
+    await asyncio.to_thread(svc.kickoff_review, rid)
     issue_id = svc.reviews_in_memory[rid].issues[0].issue_id  # type: ignore[index]
 
     out = await svc.answer_dialog(rid, issue_id, "Q?")
