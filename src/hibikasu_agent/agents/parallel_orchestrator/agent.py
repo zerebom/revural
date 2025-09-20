@@ -13,18 +13,9 @@ from hibikasu_agent.agents.parallel_orchestrator.tools import (
 )
 from hibikasu_agent.agents.specialist import (
     create_role_agents,
-    create_specialist_from_role,
+    create_specialists_from_config,
 )
-from hibikasu_agent.constants.agents import (
-    ENGINEER_AGENT_KEY,
-    ENGINEER_ISSUES_STATE_KEY,
-    PM_AGENT_KEY,
-    PM_ISSUES_STATE_KEY,
-    QA_AGENT_KEY,
-    QA_ISSUES_STATE_KEY,
-    UX_AGENT_KEY,
-    UX_ISSUES_STATE_KEY,
-)
+from hibikasu_agent.constants.agents import SPECIALIST_DEFINITIONS
 
 
 class FinalIssuesAggregatorAgent(BaseAgent):
@@ -36,13 +27,14 @@ class FinalIssuesAggregatorAgent(BaseAgent):
         # Reuse the existing aggregation tool within a ToolContext for state access.
         tool_context = ToolContext(invocation_context=ctx, event_actions=event_actions)
         result = AGGREGATE_FINAL_ISSUES_TOOL(tool_context)
+        result_dict = result.model_dump()
 
         # Ensure downstream consumers observe the aggregated issues in both state and event.
-        event_actions.state_delta["final_review_issues"] = result
+        event_actions.state_delta["final_review_issues"] = result_dict
         event_actions.skip_summarization = True
         event_actions.escalate = True
 
-        issue_count = len(result.get("final_issues", [])) if isinstance(result, dict) else 0
+        issue_count = len(result.final_issues)
         content = genai_types.Content(
             role=self.name,
             parts=[genai_types.Part(text=f"Aggregated {issue_count} final issues")],
@@ -60,43 +52,16 @@ def create_parallel_review_agent(model: str = "gemini-2.5-flash") -> SequentialA
        and emits the final structured review result without additional LLM calls.
     """
 
-    # 1) Specialists with explicit output keys
-    engineer = create_specialist_from_role(
-        "engineer",
-        name=ENGINEER_AGENT_KEY,
-        description="バックエンドエンジニアの専門的観点からPRDをレビュー",
+    # 1) Specialists with explicit output keys defined via shared config
+    review_agents = create_specialists_from_config(
+        SPECIALIST_DEFINITIONS,
         model=model,
-        output_key=ENGINEER_ISSUES_STATE_KEY,
-    )
-
-    ux = create_specialist_from_role(
-        "ux_designer",
-        name=UX_AGENT_KEY,
-        description="UXデザイナーの専門的観点からPRDをレビュー",
-        model=model,
-        output_key=UX_ISSUES_STATE_KEY,
-    )
-
-    qa = create_specialist_from_role(
-        "qa_tester",
-        name=QA_AGENT_KEY,
-        description="QAテスターの専門的観点からPRDをレビュー",
-        model=model,
-        output_key=QA_ISSUES_STATE_KEY,
-    )
-
-    pm = create_specialist_from_role(
-        "pm",
-        name=PM_AGENT_KEY,
-        description="プロダクトマネージャーの専門的観点からPRDをレビュー",
-        model=model,
-        output_key=PM_ISSUES_STATE_KEY,
     )
 
     # 2) Run all specialists concurrently; their structured outputs persist via output_key.
     specialists_parallel = ParallelAgent(
         name="ParallelSpecialists",
-        sub_agents=[engineer, ux, qa, pm],
+        sub_agents=review_agents,
         description="Executes specialist reviews concurrently.",
     )
 
@@ -125,26 +90,16 @@ def create_coordinator_agent(model: str = "gemini-2.5-flash") -> LlmAgent:
     to move the conversation to the most suitable specialist based on the user's text.
     """
 
-    # Create chat specialists
-    _, eng_chat = create_role_agents(
-        "engineer",
-        model=model,
-        review_output_key="engineer_issues",
-        name_prefix="engineer",
-    )
-    _, ux_chat = create_role_agents(
-        "ux_designer",
-        model=model,
-        review_output_key="ux_designer_issues",
-        name_prefix="ux_designer",
-    )
-    _, qa_chat = create_role_agents(
-        "qa_tester",
-        model=model,
-        review_output_key="qa_tester_issues",
-        name_prefix="qa_tester",
-    )
-    _, pm_chat = create_role_agents("pm", model=model, review_output_key="pm_issues", name_prefix="pm")
+    # Create chat specialists from shared config
+    chat_agents = []
+    for definition in SPECIALIST_DEFINITIONS:
+        _, chat_agent = create_role_agents(
+            definition.role,
+            model=model,
+            review_output_key=definition.state_key,
+            name_prefix=definition.role,
+        )
+        chat_agents.append(chat_agent)
 
     coordinator = LlmAgent(
         name="Coordinator",
@@ -161,7 +116,7 @@ def create_coordinator_agent(model: str = "gemini-2.5-flash") -> LlmAgent:
             "- 企画・優先度・ステークホルダー調整・KPI → pm_chat\n"
             "曖昧な場合は短く確認の質問をしてから転送先を決定してください。\n"
         ),
-        sub_agents=[eng_chat, ux_chat, qa_chat, pm_chat],
+        sub_agents=chat_agents,
     )
 
     return coordinator

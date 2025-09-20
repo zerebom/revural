@@ -1,12 +1,14 @@
 """Specialist Agent implementations using Google ADK."""
 
 import tomllib
+from collections.abc import Iterable
 from pathlib import Path
 from typing import cast
 
 from google.adk.agents import LlmAgent
 from pydantic import BaseModel as PydanticBaseModel
 
+from hibikasu_agent.constants.agents import SpecialistDefinition
 from hibikasu_agent.schemas import IssuesResponse
 from hibikasu_agent.utils.logging_config import get_logger
 
@@ -150,6 +152,27 @@ def create_specialist_from_role(  # noqa: PLR0913
         output_schema=output_schema_use,
         output_key=output_key,
     )
+
+
+def create_specialists_from_config(
+    definitions: Iterable[SpecialistDefinition],
+    *,
+    model: str = "gemini-2.5-flash",
+) -> list[LlmAgent]:
+    """Build review specialists from shared configuration entries."""
+
+    agents: list[LlmAgent] = []
+    for definition in definitions:
+        agents.append(
+            create_specialist_from_role(
+                definition.role,
+                name=definition.agent_key,
+                description=definition.review_description,
+                model=model,
+                output_key=definition.state_key,
+            )
+        )
+    return agents
 
 
 def create_role_agents(
