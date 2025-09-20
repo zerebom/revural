@@ -82,6 +82,9 @@
 - [ ] 新しい `ReviewSessionStore` 内のサマリー生成ロジックから、ステータスキーを日本語ラベルに変換する `label_map` を削除する。
 - [ ] `ApiIssue` への変換ロジックから、サマリーをヒューリスティックに生成・切り詰めする処理を削除する。表示上の加工はフロントエンドの責務とする。
 
+### 2-5. ユニットテストの拡充
+- [x] `aggregate_final_issues`、`ReviewSessionStore`、`AdkReviewRunner`、`_handle_adk_event` の単体テストを追加し、出力の整合性を検証する。
+
 ---
 ---
 

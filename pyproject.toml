@@ -11,6 +11,7 @@ dependencies = [
     "toml>=0.10.2",
     "fastapi>=0.112.0",
     "uvicorn[standard]>=0.30.0",
+    "pytest-asyncio>=1.2.0",
 ]
 
 [project.optional-dependencies]
