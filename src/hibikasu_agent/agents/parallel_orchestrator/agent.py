@@ -1,18 +1,18 @@
-"""Parallel Orchestrator that aggregates specialist issues into FinalIssue list.
+"""Parallel Orchestrator that aggregates specialist issues into FinalIssue list."""
 
-This agent orchestrates four specialist agents via AgentTool with summarization
-disabled, then aggregates their typed outputs into FinalIssuesResponse.
-"""
+from google.adk.agents import BaseAgent, LlmAgent, ParallelAgent, SequentialAgent
+from google.adk.events import Event, EventActions
+from google.adk.tools.tool_context import ToolContext
+from google.genai import types as genai_types
 
-from google.adk.agents import LlmAgent, SequentialAgent
-from google.adk.tools import AgentTool, FunctionTool
-
-from hibikasu_agent.agents.parallel_orchestrator.tools import AGGREGATE_FINAL_ISSUES_TOOL
+from hibikasu_agent.agents.parallel_orchestrator.tools import (
+    AGGREGATE_FINAL_ISSUES_TOOL,
+)
 from hibikasu_agent.agents.specialist import (
     create_role_agents,
     create_specialist_from_role,
 )
-from hibikasu_agent.constants import (
+from hibikasu_agent.constants.agents import (
     ENGINEER_AGENT_KEY,
     ENGINEER_ISSUES_STATE_KEY,
     PM_AGENT_KEY,
@@ -22,18 +22,39 @@ from hibikasu_agent.constants import (
     UX_AGENT_KEY,
     UX_ISSUES_STATE_KEY,
 )
-from hibikasu_agent.schemas.models import FinalIssuesResponse
+
+
+class FinalIssuesAggregatorAgent(BaseAgent):
+    """Deterministic agent that aggregates specialist outputs without LLM calls."""
+
+    async def _run_async_impl(self, ctx):  # type: ignore[override]
+        event_actions = EventActions()
+
+        # Reuse the existing aggregation tool within a ToolContext for state access.
+        tool_context = ToolContext(invocation_context=ctx, event_actions=event_actions)
+        result = AGGREGATE_FINAL_ISSUES_TOOL(tool_context)
+
+        # Ensure downstream consumers observe the aggregated issues in both state and event.
+        event_actions.state_delta["final_review_issues"] = result
+        event_actions.skip_summarization = True
+        event_actions.escalate = True
+
+        issue_count = len(result.get("final_issues", [])) if isinstance(result, dict) else 0
+        content = genai_types.Content(
+            role=self.name,
+            parts=[genai_types.Part(text=f"Aggregated {issue_count} final issues")],
+        )
+        yield Event(author=self.name, content=content, actions=event_actions)
 
 
 def create_parallel_review_agent(model: str = "gemini-2.5-flash") -> SequentialAgent:
     """Build the review workflow agent using a sequential pipeline based on ADK best practices.
 
     Flow:
-    1) SpecialistRunner agent calls four specialist AgentTools. Their typed
-       outputs (IssuesResponse) are stored in session state via their `output_key`.
-    2) IssueAggregatorMerger agent invokes the aggregate_final_issues tool,
-       which reads from state by referencing state keys (e.g., `{engineer_issues}`)
-       in its instruction, and produces the final FinalIssuesResponse.
+    1) Four specialist review agents run concurrently via ParallelAgent and
+       persist their typed IssuesResponse into session state using `output_key`.
+    2) A deterministic aggregator agent invokes the aggregate_final_issues tool
+       and emits the final structured review result without additional LLM calls.
     """
 
     # 1) Specialists with explicit output keys
@@ -69,46 +90,23 @@ def create_parallel_review_agent(model: str = "gemini-2.5-flash") -> SequentialA
         output_key=PM_ISSUES_STATE_KEY,
     )
 
-    # 2) Wrap specialists as AgentTools with summarization disabled
-    engineer_tool = AgentTool(agent=engineer, skip_summarization=True)
-    ux_tool = AgentTool(agent=ux, skip_summarization=True)
-    qa_tool = AgentTool(agent=qa, skip_summarization=True)
-    pm_tool = AgentTool(agent=pm, skip_summarization=True)
-
-    # 3) Step 1 Agent: Runs the four specialist tools.
-    # The output of each tool is automatically saved to the state under its `output_key`.
-    specialist_runner = LlmAgent(
-        name="SpecialistRunner",
-        model=model,
-        description="Runs four specialist tools.",
-        instruction=(
-            "You must call all four of the following tools using the user's input: "
-            f"`{ENGINEER_AGENT_KEY}`, `{UX_AGENT_KEY}`, "
-            f"`{QA_AGENT_KEY}`, `{PM_AGENT_KEY}`."
-        ),
-        tools=[engineer_tool, ux_tool, qa_tool, pm_tool],
+    # 2) Run all specialists concurrently; their structured outputs persist via output_key.
+    specialists_parallel = ParallelAgent(
+        name="ParallelSpecialists",
+        sub_agents=[engineer, ux, qa, pm],
+        description="Executes specialist reviews concurrently.",
     )
 
-    aggregate_tool = FunctionTool(func=AGGREGATE_FINAL_ISSUES_TOOL)
-
-    merger = LlmAgent(
+    merger = FinalIssuesAggregatorAgent(
         name="IssueAggregatorMerger",
-        model=model,
-        description="Calls a deterministic tool to aggregate specialist outputs.",
-        instruction=(
-            "Call the `aggregate_final_issues` tool exactly once with no arguments. "
-            "Do not rewrite or summarize issues manually. Return the tool result as-is."
-        ),
-        tools=[aggregate_tool],
-        output_schema=FinalIssuesResponse,
-        output_key="final_review_issues",
+        description="Aggregates specialist outputs deterministically.",
     )
 
     # 5) Combine them in a SequentialAgent pipeline
     pipeline = SequentialAgent(
         name="ReviewPipelineWithTools",
-        sub_agents=[specialist_runner, merger],
-        description=("Coordinates specialist AgentTools and deterministic aggregation."),
+        sub_agents=[specialists_parallel, merger],
+        description=("Coordinates specialist agents in parallel and deterministic aggregation."),
     )
 
     return pipeline

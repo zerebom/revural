@@ -9,7 +9,7 @@ from typing import Any, cast
 from google.adk.events.event import Event as ADKEvent
 
 from hibikasu_agent.api.schemas import AgentCount, Issue, ReviewSummaryResponse, StatusCount, SummaryStatistics
-from hibikasu_agent.constants import AGENT_DISPLAY_NAMES, SPECIALIST_AGENT_KEYS
+from hibikasu_agent.constants.agents import AGENT_DISPLAY_NAMES, SPECIALIST_AGENT_KEYS
 from hibikasu_agent.services.base import AbstractReviewService
 from hibikasu_agent.services.models import ReviewRuntimeSession
 from hibikasu_agent.services.providers.adk import ADKService

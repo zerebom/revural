@@ -6,7 +6,7 @@ from uuid import uuid4
 from google.adk.tools.tool_context import ToolContext
 from pydantic import ValidationError
 
-from hibikasu_agent.constants import (
+from hibikasu_agent.constants.agents import (
     AGENT_DISPLAY_NAMES,
     AGENT_STATE_KEYS,
     ENGINEER_AGENT_KEY,
@@ -64,8 +64,8 @@ def _load_issues_from_state(state: dict[str, Any], key: str) -> IssuesResponse:
     raise TypeError(f"Unexpected state payload type for {key}: {type(raw)!r}")
 
 
-def aggregate_final_issues(tool_context: ToolContext) -> FinalIssuesResponse:
-    """Aggregate specialist outputs stored in state into FinalIssuesResponse."""
+def aggregate_final_issues(tool_context: ToolContext) -> dict[str, Any]:
+    """Aggregate specialist outputs stored in state and return a serializable payload."""
 
     state = getattr(tool_context, "state", {}) or {}
 
@@ -86,10 +86,11 @@ def aggregate_final_issues(tool_context: ToolContext) -> FinalIssuesResponse:
         issue.priority = idx
 
     response = FinalIssuesResponse(final_issues=final_items)
+    response_dict = response.model_dump()
     # Persist for downstream consumers (ADKService.run_review_async expects this key)
-    state["final_review_issues"] = response.model_dump()
+    state["final_review_issues"] = response_dict
     logger.info("Aggregated final issues", count=len(final_items))
-    return response
+    return response_dict
 
 
 AGGREGATE_FINAL_ISSUES_TOOL = aggregate_final_issues
