@@ -13,10 +13,7 @@ from google.adk.sessions import InMemorySessionService
 from google.genai import types as genai_types
 
 # Internal imports
-from hibikasu_agent.agents.parallel_orchestrator.agent import (
-    create_coordinator_agent,
-    create_parallel_review_agent,
-)
+from hibikasu_agent.agents.parallel_orchestrator import create_coordinator_agent, load_review_pipeline
 from hibikasu_agent.api.schemas import Issue as ApiIssue
 from hibikasu_agent.api.schemas import IssueSpan
 from hibikasu_agent.utils.logging_config import get_logger
@@ -33,7 +30,7 @@ class ADKService:
         - 対話用コーディネーターエージェント
         - 対話履歴を保持するセッションサービス
         """
-        model_name = os.getenv("ADK_MODEL") or "gemini-2.5-flash"
+        model_name = os.getenv("ADK_MODEL") or "gemini-2.5-flash-lite"
         self._coordinator_agent = create_coordinator_agent(model=model_name)
         self._chat_session_service = InMemorySessionService()
         self._default_specialist_agents: list[str] = [
@@ -130,8 +127,7 @@ class ADKService:
         PRDのレビューを非同期で実行する。呼び出し毎に独立した ADK セッションを生成・破棄する。
         """
         try:
-            model_name = os.getenv("ADK_MODEL") or "gemini-2.5-flash-lite"
-            agent = create_parallel_review_agent(model=model_name)
+            agent = load_review_pipeline()
 
             service = InMemorySessionService()
             app_name = "hibikasu_review_api"

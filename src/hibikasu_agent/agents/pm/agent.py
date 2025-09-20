@@ -7,5 +7,5 @@ root_agent = create_specialist_from_role(
     "pm",
     name="pm_specialist",
     description="プロダクトマネージャーの専門的観点からPRDをレビュー",
-    model="gemini-2.5-flash",
+    model="gemini-2.5-flash-lite",
 )

@@ -36,7 +36,7 @@ def create_specialist(  # noqa: PLR0913
     *,
     name: str,
     description: str,
-    model: str = "gemini-2.5-flash",
+    model: str = "gemini-2.5-flash-lite",
     instruction: str | None = None,
     system_prompt: str | None = None,
     task_prompt: str | None = None,
@@ -106,7 +106,7 @@ def create_specialist_from_role(  # noqa: PLR0913
     *,
     name: str,
     description: str,
-    model: str = "gemini-2.5-flash",
+    model: str = "gemini-2.5-flash-lite",
     purpose: str = "review",  # "review" or "chat"
     output_schema: type[PydanticBaseModel] | None = None,
     output_key: str | None = None,
@@ -155,7 +155,7 @@ def create_specialist_from_role(  # noqa: PLR0913
 def create_role_agents(
     role_key: str,
     *,
-    model: str = "gemini-2.5-flash",
+    model: str = "gemini-2.5-flash-lite",
     review_output_key: str,
     name_prefix: str | None = None,
 ) -> tuple[LlmAgent, LlmAgent]:

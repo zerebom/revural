@@ -7,5 +7,5 @@ root_agent = create_specialist_from_role(
     "ux_designer",
     name="ux_designer_specialist",
     description="UXデザイナーの専門的観点からPRDをレビュー",
-    model="gemini-2.5-flash",
+    model="gemini-2.5-flash-lite",
 )

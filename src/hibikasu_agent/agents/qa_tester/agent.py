@@ -7,5 +7,5 @@ root_agent = create_specialist_from_role(
     "qa_tester",
     name="qa_tester_specialist",
     description="QAテスターの専門的観点からPRDをレビュー",
-    model="gemini-2.5-flash",
+    model="gemini-2.5-flash-lite",
 )

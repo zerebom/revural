@@ -1,0 +1,12 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/google/adk-python/refs/heads/main/src/google/adk/agents/config_schemas/AgentConfig.json
+name: IssueAggregatorMerger
+description: Calls a deterministic tool to aggregate specialist outputs.
+model: gemini-2.5-flash-lite
+instruction: |
+  Call the `aggregate_final_issues` tool exactly once with no arguments.
+  Do not rewrite or summarize issues manually. Return the tool result as-is.
+tools:
+  - name: hibikasu_agent.agents.parallel_orchestrator.tools.aggregate_final_issues
+output_schema:
+  name: hibikasu_agent.schemas.models.FinalIssuesResponse
+output_key: final_review_issues
