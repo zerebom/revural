@@ -4,7 +4,7 @@ import asyncio
 import time
 import uuid
 from collections import Counter
-from typing import Any, cast
+from typing import Any
 
 from google.adk.events.event import Event as ADKEvent
 
@@ -31,12 +31,12 @@ def _extract_error_message(err: Exception) -> str:
     """Return a concise, user-facing error description."""
 
     visited: set[int] = set()
-    current: Exception | None = err
+    current: BaseException | None = err
     while current and id(current) not in visited:
         visited.add(id(current))
         if hasattr(current, "errors") and callable(current.errors):
             try:
-                errors = current.errors()  # type: ignore[reportAny]
+                errors = current.errors()
             except Exception:
                 errors = []
             if errors:
@@ -113,7 +113,7 @@ class AiService(AbstractReviewService):
         sess = self._reviews.get(review_id)
         if not sess or not sess.issues:
             return None
-        issues: list[Issue] = cast("list[Issue]", sess.issues)
+        issues = sess.issues
         for iss in issues:
             if iss.issue_id == issue_id:
                 return iss
@@ -165,7 +165,7 @@ class AiService(AbstractReviewService):
         sess = self._reviews.get(review_id)
         if not sess or not sess.issues:
             return False
-        issues: list[Issue] = cast("list[Issue]", sess.issues)
+        issues = sess.issues
         for iss in issues:
             if iss.issue_id == issue_id:
                 # The API Issue model has an optional status field
@@ -181,7 +181,7 @@ class AiService(AbstractReviewService):
 
         issues: list[Issue] = []
         if sess.issues:
-            issues = cast("list[Issue]", sess.issues)
+            issues = sess.issues
 
         total = len(issues)
         status_counter: Counter[str] = Counter()

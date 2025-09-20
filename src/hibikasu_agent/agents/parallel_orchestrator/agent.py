@@ -1,6 +1,9 @@
 """Parallel Orchestrator that aggregates specialist issues into FinalIssue list."""
 
+from collections.abc import AsyncGenerator
+
 from google.adk.agents import BaseAgent, LlmAgent, ParallelAgent, SequentialAgent
+from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events import Event, EventActions
 from google.adk.tools.tool_context import ToolContext
 from google.genai import types as genai_types
@@ -27,7 +30,7 @@ from hibikasu_agent.constants.agents import (
 class FinalIssuesAggregatorAgent(BaseAgent):
     """Deterministic agent that aggregates specialist outputs without LLM calls."""
 
-    async def _run_async_impl(self, ctx):  # type: ignore[override]
+    async def _run_async_impl(self, ctx: InvocationContext) -> AsyncGenerator[Event, None]:
         event_actions = EventActions()
 
         # Reuse the existing aggregation tool within a ToolContext for state access.

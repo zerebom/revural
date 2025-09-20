@@ -35,7 +35,7 @@ class ADKService:
         """
         model_name = os.getenv("ADK_MODEL") or "gemini-2.5-flash"
         self._coordinator_agent = create_coordinator_agent(model=model_name)
-        self._chat_session_service = InMemorySessionService()
+        self._chat_session_service = InMemorySessionService()  # type: ignore[no-untyped-call]
         self._default_specialist_agents: list[str] = [
             "engineer_specialist",
             "ux_designer_specialist",
@@ -120,6 +120,40 @@ class ADKService:
 
         return IssueSpan(start_index=actual_start_index, end_index=actual_end_index)
 
+    def _create_api_issue(self, item: dict[str, object], prd_text: str) -> ApiIssue:
+        """Create ApiIssue from raw ADK output item."""
+        original_text = str(item.get("original_text") or "")
+        span = self._calculate_span(prd_text, original_text)
+        logger.info(f"ADK issue span: {span}")
+
+        # Prefer explicit summary; otherwise derive from comment or original snippet
+        _comment = str(item.get("comment") or "")
+        _summary = str(item.get("summary") or "").strip()
+        if not _summary:
+            # Heuristic: first sentence or up to 80 chars
+            head = _comment.strip().splitlines()[0] if _comment else ""
+            if not head:
+                head = original_text.strip()
+            _summary = (head[:80] + ("…" if len(head) > 80 else "")) if head else ""
+
+        priority_value = item.get("priority")
+        priority = 0
+        if isinstance(priority_value, int):
+            priority = priority_value
+        elif isinstance(priority_value, str):
+            with suppress(ValueError):
+                priority = int(priority_value)
+
+        return ApiIssue(
+            issue_id=str(item.get("issue_id") or ""),
+            priority=priority,
+            agent_name=str(item.get("agent_name") or "unknown"),
+            summary=_summary,
+            comment=_comment,
+            original_text=original_text,
+            span=span,
+        )
+
     async def run_review_async(
         self,
         prd_text: str,
@@ -133,7 +167,7 @@ class ADKService:
             model_name = os.getenv("ADK_MODEL") or "gemini-2.5-flash-lite"
             agent = create_parallel_review_agent(model=model_name)
 
-            service = InMemorySessionService()
+            service = InMemorySessionService()  # type: ignore[no-untyped-call]
             app_name = "hibikasu_review_api"
             user_id = f"api_user_{uuid4()}"
             session_id = f"sess_{uuid4()}"
@@ -159,7 +193,7 @@ class ADKService:
             if not final_review_issues or not isinstance(final_review_issues, dict):
                 logger.error("No final_review_issues in state")
                 return []
-            final_issues: list[dict] = final_review_issues.get("final_issues", [])
+            final_issues: list[dict[str, object]] = final_review_issues.get("final_issues", [])
 
             # Expect a typed FinalIssuesResponse object and access directly
 
@@ -177,29 +211,8 @@ class ADKService:
             api_issues: list[ApiIssue] = []
             for item in final_issues:
                 try:
-                    original_text = str(item.get("original_text") or "")
-                    span = self._calculate_span(prd_text, original_text)
-                    logger.info(f"ADK issue span: {span}")
-                    # Prefer explicit summary; otherwise derive from comment or original snippet
-                    _comment = str(item.get("comment") or "")
-                    _summary = str(item.get("summary") or "").strip()
-                    if not _summary:
-                        # Heuristic: first sentence or up to 80 chars
-                        head = _comment.strip().splitlines()[0] if _comment else ""
-                        if not head:
-                            head = original_text.strip()
-                        _summary = (head[:80] + ("…" if len(head) > 80 else "")) if head else ""
-                    api_issues.append(
-                        ApiIssue(
-                            issue_id=str(item.get("issue_id") or ""),
-                            priority=int(item.get("priority") or 0),
-                            agent_name=str(item.get("agent_name") or "unknown"),
-                            summary=_summary,
-                            comment=str(item.get("comment") or ""),
-                            original_text=original_text,
-                            span=span,
-                        )
-                    )
+                    api_issue = self._create_api_issue(item, prd_text)
+                    api_issues.append(api_issue)
                 except Exception as err:  # validation error on a single item
                     logger.warning("Skipping invalid ADK issue: %s | data=%s", err, item)
             return api_issues
