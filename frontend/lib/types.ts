@@ -21,6 +21,12 @@ export interface ReviewStatusResponse {
   status: ReviewStatus;
   issues: Issue[] | null;
   prd_text?: string | null;
+  progress?: number | null;
+  phase?: string | null;
+  phase_message?: string | null;
+  eta_seconds?: number | null;
+  expected_agents?: string[] | null;
+  completed_agents?: string[] | null;
 }
 
 export interface ReviewStartResponse {

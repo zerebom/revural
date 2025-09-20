@@ -3,9 +3,11 @@ from __future__ import annotations
 import os
 import re
 import time
+from collections.abc import Callable
 from contextlib import suppress
 from uuid import uuid4
 
+from google.adk.events.event import Event
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types as genai_types
@@ -33,8 +35,20 @@ class ADKService:
         """
         model_name = os.getenv("ADK_MODEL") or "gemini-2.5-flash"
         self._coordinator_agent = create_coordinator_agent(model=model_name)
-        self._chat_session_service = InMemorySessionService()
+        self._chat_session_service = InMemorySessionService()  # type: ignore[no-untyped-call]
+        self._default_specialist_agents: list[str] = [
+            "engineer_specialist",
+            "ux_designer_specialist",
+            "qa_tester_specialist",
+            "pm_specialist",
+        ]
         logger.info("ADKService initialized.")
+
+    @property
+    def default_review_agents(self) -> list[str]:
+        """Returns the default specialist agent names involved in the review."""
+
+        return list(self._default_specialist_agents)
 
     def _normalize_text(self, text: str) -> str:
         """テキストから空白文字（スペース、タブ、改行など）をすべて除去する"""
@@ -106,7 +120,46 @@ class ADKService:
 
         return IssueSpan(start_index=actual_start_index, end_index=actual_end_index)
 
-    async def run_review_async(self, prd_text: str) -> list[ApiIssue]:
+    def _create_api_issue(self, item: dict[str, object], prd_text: str) -> ApiIssue:
+        """Create ApiIssue from raw ADK output item."""
+        original_text = str(item.get("original_text") or "")
+        span = self._calculate_span(prd_text, original_text)
+        logger.info(f"ADK issue span: {span}")
+
+        # Prefer explicit summary; otherwise derive from comment or original snippet
+        _comment = str(item.get("comment") or "")
+        _summary = str(item.get("summary") or "").strip()
+        if not _summary:
+            # Heuristic: first sentence or up to 80 chars
+            head = _comment.strip().splitlines()[0] if _comment else ""
+            if not head:
+                head = original_text.strip()
+            _summary = (head[:80] + ("…" if len(head) > 80 else "")) if head else ""
+
+        priority_value = item.get("priority")
+        priority = 0
+        if isinstance(priority_value, int):
+            priority = priority_value
+        elif isinstance(priority_value, str):
+            with suppress(ValueError):
+                priority = int(priority_value)
+
+        return ApiIssue(
+            issue_id=str(item.get("issue_id") or ""),
+            priority=priority,
+            agent_name=str(item.get("agent_name") or "unknown"),
+            summary=_summary,
+            comment=_comment,
+            original_text=original_text,
+            span=span,
+        )
+
+    async def run_review_async(
+        self,
+        prd_text: str,
+        *,
+        on_event: Callable[[Event], None] | None = None,
+    ) -> list[ApiIssue]:
         """
         PRDのレビューを非同期で実行する。呼び出し毎に独立した ADK セッションを生成・破棄する。
         """
@@ -114,7 +167,7 @@ class ADKService:
             model_name = os.getenv("ADK_MODEL") or "gemini-2.5-flash-lite"
             agent = create_parallel_review_agent(model=model_name)
 
-            service = InMemorySessionService()
+            service = InMemorySessionService()  # type: ignore[no-untyped-call]
             app_name = "hibikasu_review_api"
             user_id = f"api_user_{uuid4()}"
             session_id = f"sess_{uuid4()}"
@@ -125,9 +178,13 @@ class ADKService:
             content = genai_types.Content(role="user", parts=[genai_types.Part(text=str(prd_text))])
 
             _t0 = time.perf_counter()
-            async for _event in runner.run_async(user_id=user_id, session_id=session_id, new_message=content):
-                # Drain events; the final structured output is in session state
-                pass
+            async for event in runner.run_async(user_id=user_id, session_id=session_id, new_message=content):
+                # Drain events; optionally hand them to caller for progress updates
+                if on_event:
+                    try:
+                        on_event(event)
+                    except Exception as cb_err:
+                        logger.warning("on_event callback failed", exc_info=cb_err)
             _elapsed_ms = int((time.perf_counter() - _t0) * 1000)
 
             sess = await service.get_session(app_name=app_name, user_id=user_id, session_id=session_id)
@@ -136,7 +193,7 @@ class ADKService:
             if not final_review_issues or not isinstance(final_review_issues, dict):
                 logger.error("No final_review_issues in state")
                 return []
-            final_issues: list[dict] = final_review_issues.get("final_issues", [])
+            final_issues: list[dict[str, object]] = final_review_issues.get("final_issues", [])
 
             # Expect a typed FinalIssuesResponse object and access directly
 
@@ -154,47 +211,14 @@ class ADKService:
             api_issues: list[ApiIssue] = []
             for item in final_issues:
                 try:
-                    original_text = str(item.get("original_text") or "")
-                    span = self._calculate_span(prd_text, original_text)
-                    logger.info(f"ADK issue span: {span}")
-                    # Prefer explicit summary; otherwise derive from comment or original snippet
-                    _comment = str(item.get("comment") or "")
-                    _summary = str(item.get("summary") or "").strip()
-                    if not _summary:
-                        # Heuristic: first sentence or up to 80 chars
-                        head = _comment.strip().splitlines()[0] if _comment else ""
-                        if not head:
-                            head = original_text.strip()
-                        _summary = (head[:80] + ("…" if len(head) > 80 else "")) if head else ""
-                    api_issues.append(
-                        ApiIssue(
-                            issue_id=str(item.get("issue_id") or ""),
-                            priority=int(item.get("priority") or 0),
-                            agent_name=str(item.get("agent_name") or "unknown"),
-                            summary=_summary,
-                            comment=str(item.get("comment") or ""),
-                            original_text=original_text,
-                            span=span,
-                        )
-                    )
+                    api_issue = self._create_api_issue(item, prd_text)
+                    api_issues.append(api_issue)
                 except Exception as err:  # validation error on a single item
                     logger.warning("Skipping invalid ADK issue: %s | data=%s", err, item)
             return api_issues
         except Exception as err:  # nosec B110
-            detail = str(err)
-            sub = getattr(err, "exceptions", None)
-            if isinstance(sub, list | tuple) and sub:
-                detail = f"{detail} | first_sub={sub[0]}"
-            return [
-                ApiIssue(
-                    issue_id="AI-ERROR",
-                    priority=1,
-                    agent_name="AI-Orchestrator",
-                    summary="ADK実行エラー",
-                    comment=f"ADK実行に失敗しました: {detail}",
-                    original_text=str(prd_text)[:120] or "(empty)",
-                )
-            ]
+            logger.error("ADK run failed", extra={"error": str(err)}, exc_info=True)
+            raise
 
     async def answer_dialog_async(self, issue: ApiIssue, question_text: str) -> str:
         """

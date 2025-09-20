@@ -44,3 +44,15 @@
 - Zustand ストアのリセット導線と空配列対応をセットで行い、セッション切り替え時の表示崩れを防ぐ。
 - サマリーページのポーリング有無を決定し、必要なら `useSWR` の `refreshInterval` を導入。
 - 仕様上未提供のボタン/機能は UI から排除するか明示的な disabled 表示を行う。
+- `IssueAccordionItem.tsx` / `SummaryPage.tsx` / `legacy/IssueCard.tsx` では `shortenOriginalText` を必ず経由して元テキストを表示し、長文ハイライトがそのまま出ないようにする（2025-09-19 対応済み、要レビュー）。
+
+## ハイライト不具合の原因調査メモ（2025-09-18）
+- **症状**: 指摘が複数あるのに `<mark>` が 1 つしか描画されないケースがあり、特に span が無い指摘で顕著。
+- **原因1（バックエンド）**: `src/hibikasu_agent/schemas/models.py:35` の `IssueItem` に `span` フィールドがなく、スペシャリストが返した span 情報がパース時に捨てられている。その結果、最終レスポンスの `span` は常に `None` から再計算される。
+- **原因2（バックエンド再計算）**: `ADKService._calculate_span()` は空白除去のみで一致判定しており、エージェントが原文を軽く整形した場合（箇条書きを削除、語尾調整など）に `original_text` と PRD が一致せず、span 生成に失敗する。
+- **原因3（フロントエンド）**: `frontend/components/PrdTextView.tsx:30` のフォールバック検索は `prdText.indexOf(issue.original_text)` の最初の一致だけを使用し、`cursor` ロジックで重複位置を打ち切るため、同じ抜粋を指す指摘が複数あると最初の 1 件のみハイライトされる。
+
+### 対応アイデア
+1. バックエンドのスキーマ (`IssueItem`, `FinalIssue`, API `Issue`) に `span` を追加し、スペシャリストの出力をそのまま保持。`ADKService` 側では提供された span を優先し、従来の `_calculate_span()` はフォールバックとして残す。
+2. `_calculate_span()` のマッチ精度を向上させる（NFKC 正規化、ケース変換、複数候補探索など）ことで軽微な表記ゆれでも span を復元できるようにする。
+3. フロントエンド側でフォールバック検索を改良し、同一テキストが複数回登場する場合でも未使用の位置を順番に割り当て、`cursor` 判定で後続の `<mark>` を破棄しないようにする。

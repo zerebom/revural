@@ -1,4 +1,5 @@
 # AIレビュー進行状況表示改善計画
+n
 
 ## 背景
 - 現行UIでは`processing/completed/failed`の3状態のみで、レビュー進行中に何が起きているか伝わらずユーザー体験が弱い。
@@ -10,6 +11,19 @@
 - 各イベントは`Event.actions.state_delta`でセッションステート差分を運べる仕組みを持つ (`.venv/lib/python3.12/site-packages/google/adk/events/event_actions.py:45-48`).
 - `Event.is_final_response()`で終端イベント（最終レスポンス）と途中イベントを判別可能 (`.venv/lib/python3.12/site-packages/google/adk/events/event.py:93-108`).
 
+## 直近のリグレッション調査 (2025-09-18)
+
+### 500エラーの直接原因
+- `aggregate_final_issues` が Pydantic モデル `FinalIssuesResponse` をそのまま返す実装に変更されたが、ADK の `FunctionTool` は戻り値を dict へシリアライズする前提で `types.FunctionResponse` を生成するため、JSON シリアライズできないオブジェクトが返ると `Object of type FinalIssuesResponse is not JSON serializable` が発生し、ADK 側で内部エラーになり API 500 を誘発する。
+- 該当箇所: `src/hibikasu_agent/agents/parallel_orchestrator/tools.py:94` で Pydantic インスタンスを返却している。
+- ADK の処理フロー: `.venv/lib/python3.12/site-packages/google/adk/flows/llm_flows/functions.py:693` 以降で戻り値を dict 化 (`{'result': function_result}`) しようとする。
+- 対処方針: ツールの戻り値は `response.model_dump()` など JSON シリアライズ可能な構造に揃える。`state["final_review_issues"]` へは引き続き dict を格納するため、戻り値だけ明示的に dict / list へ変換すれば互換性を保てる。
+
+### original_text トリミングと span 計算の齟齬
+- `_trim_original_text` によって指摘箇所の `original_text` が 160 文字上限で末尾に `...` を付与しており、PRD からそのまま抜粋した文字列でなくなるケースがある。
+- span 計算は `ADKService._calculate_span`（`src/hibikasu_agent/services/providers/adk.py:140`）で PRD 内の位置を `original_text` から逆算しているため、末尾が `...` に置換されると一致判定に失敗し、UI ハイライトがずれるまたは欠落する。
+- 対処方針: 表示用と照合用のテキストを分ける、あるいはトリミング時に PRD 内の実際の切り出しを保持して `span` 計算に支障を与えないようにする（例: 末尾を単純に切り捨て、表示時のみ `...` を挿入する）。
+
 ## 実装方針
 1. **ReviewRuntimeSessionの拡張**
    - 追加フィールド案：
@@ -17,6 +31,7 @@
      - `progress: float`（0.0〜1.0）
      - `eta_seconds: int | None`
      - `phase_message: str | None`
+     - `expected_agents: list[str]`：今回のセッションで実行するエージェント名を保持し、進捗や完了判定の基準にする（フロントからの動的構成に対応）。
      - （必要に応じて）`history: list[PhaseLog]`
 
 2. **ADKイベント処理の導入**
@@ -68,6 +83,11 @@
    - SSE/WebSocketなどリアルタイム配信チャネルが必要になった段階で導入する。
 
 この段階的アプローチにより、まずはシンプルな改善で運用を安定させ、のちに表現力豊かな進捗演出へスムーズに拡張できる。
+
+### 2025-09-19 メモ
+- 現状は ADK イベントの `author` / `branch` 解析に失敗した場合はログのみ残して進捗を進めない暫定実装。次ステップとして、各スペシャリストが完了時に `state_delta` へ `{"completed_agent": "engineer_specialist"}` を書き出すようにエージェント定義を拡張するタスクを切ること。
+
+エージェント構成がユーザー操作で変化する場合は、セッション生成時に受け取ったリストを`expected_agents`へ保存し、イベント処理側ではこのリストを基準に`completed_agents`や進捗率を算出する。
 
 
 ## 推奨ロードマップ

@@ -56,6 +56,12 @@ class ReviewSession(BaseModel):
     prd_text: str
     panel_type: str | None = None
     polls: int = 0
+    progress: float | None = None
+    phase: str | None = None
+    phase_message: str | None = None
+    eta_seconds: int | None = None
+    expected_agents: list[str] | None = None
+    completed_agents: list[str] | None = None
 
 
 class StatusResponse(BaseModel):
@@ -65,6 +71,12 @@ class StatusResponse(BaseModel):
     issues: list[Issue] | None = None
     # Include original PRD text so the frontend can hydrate state on reload
     prd_text: str | None = None
+    progress: float | None = None
+    phase: str | None = None
+    phase_message: str | None = None
+    eta_seconds: int | None = None
+    expected_agents: list[str] | None = None
+    completed_agents: list[str] | None = None
 
 
 class DialogRequest(BaseModel):

@@ -8,6 +8,7 @@ import { Bar, BarChart, CartesianGrid, Pie, PieChart, ResponsiveContainer, Toolt
 import Header from "@/components/layout/Header";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { api } from "@/lib/api";
+import { shortenOriginalText } from "@/lib/text";
 import { ReviewSummaryResponse, StatusCount } from "@/lib/types";
 import { ChartContainer, ChartTooltipContent, ChartEmptyState, ChartConfig } from "@/components/ui/chart";
 
@@ -288,7 +289,7 @@ export default function SummaryPage({ reviewId }: { reviewId: string }) {
                     <div className="space-y-2">
                       <p className="typ-caption text-slate-500">元テキスト</p>
                       <blockquote className="typ-body-sm whitespace-pre-wrap border-l-4 border-slate-200 bg-slate-50 p-3 pl-4 text-slate-800">
-                        {issue.original_text}
+                        {shortenOriginalText(issue.original_text)}
                       </blockquote>
                     </div>
                   )}

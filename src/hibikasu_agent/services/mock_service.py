@@ -3,7 +3,6 @@ from __future__ import annotations
 import time
 import uuid
 from collections import Counter
-from typing import cast
 
 from hibikasu_agent.api.schemas import (
     AgentCount,
@@ -72,7 +71,7 @@ class MockService(AbstractReviewService):
         session = self._store.get(review_id)
         if not session or not session.issues:
             return None
-        issues: list[Issue] = cast("list[Issue]", session.issues)
+        issues = session.issues
         for issue in issues:
             if issue.issue_id == issue_id:
                 return issue
@@ -111,7 +110,7 @@ class MockService(AbstractReviewService):
         session = self._store.get(review_id)
         if not session or not session.issues:
             return False
-        issues: list[Issue] = cast("list[Issue]", session.issues)
+        issues = session.issues
         for issue in issues:
             if issue.issue_id == issue_id:
                 # api.schemas.Issue には optional な status フィールドがあるため、直接更新可能
@@ -127,7 +126,7 @@ class MockService(AbstractReviewService):
 
         issues: list[Issue] = []
         if session.issues:
-            issues = cast("list[Issue]", session.issues)
+            issues = session.issues
 
         total = len(issues)
         status_counter: Counter[str] = Counter()
