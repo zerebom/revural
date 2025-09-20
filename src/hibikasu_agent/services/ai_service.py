@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import time
 import uuid
 from collections import Counter
@@ -8,11 +7,17 @@ from typing import Any
 
 from google.adk.events.event import Event as ADKEvent
 
-from hibikasu_agent.api.schemas import AgentCount, Issue, ReviewSummaryResponse, StatusCount, SummaryStatistics
-from hibikasu_agent.constants.agents import AGENT_DISPLAY_NAMES, SPECIALIST_AGENT_KEYS
+from hibikasu_agent.api.schemas.reviews import AgentCount, Issue, ReviewSummaryResponse, StatusCount, SummaryStatistics
+from hibikasu_agent.constants.agents import (
+    AGENT_DISPLAY_NAMES,
+    SPECIALIST_AGENT_KEYS,
+    STATE_KEY_TO_AGENT_KEY,
+)
 from hibikasu_agent.services.base import AbstractReviewService
 from hibikasu_agent.services.models import ReviewRuntimeSession
 from hibikasu_agent.services.providers.adk import ADKService
+from hibikasu_agent.services.review_runner import AdkReviewRunner
+from hibikasu_agent.services.review_store import ReviewSessionStore
 from hibikasu_agent.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -62,13 +67,20 @@ class AiService(AbstractReviewService):
     to compute review issues asynchronously.
     """
 
-    def __init__(self, adk_service: ADKService) -> None:
-        self._reviews: dict[str, ReviewRuntimeSession] = {}
+    def __init__(
+        self,
+        adk_service: ADKService,
+        *,
+        review_store: ReviewSessionStore | None = None,
+        review_runner: AdkReviewRunner | None = None,
+    ) -> None:
         self.adk_service = adk_service
+        self._store = review_store or ReviewSessionStore()
+        self._review_runner = review_runner or AdkReviewRunner(adk_service)
 
     @property
     def reviews_in_memory(self) -> dict[str, ReviewRuntimeSession]:
-        return self._reviews
+        return self._store.as_dict()
 
     def new_review_session(self, prd_text: str, panel_type: str | None = None) -> str:
         review_id = str(uuid.uuid4())
@@ -79,7 +91,7 @@ class AiService(AbstractReviewService):
         phase_message = None
         if expected_agents:
             phase_message = f"{len(expected_agents)}名の専門家がレビューを開始しました"
-        self._reviews[review_id] = ReviewRuntimeSession(
+        session = ReviewRuntimeSession(
             created_at=time.time(),
             status="processing",
             issues=None,
@@ -91,10 +103,11 @@ class AiService(AbstractReviewService):
             phase="processing",
             phase_message=phase_message,
         )
+        self._store.create(review_id, session)
         return review_id
 
     def get_review_session(self, review_id: str) -> dict[str, Any]:
-        sess = self._reviews.get(review_id)
+        sess = self._store.get(review_id)
         if not sess:
             return {"status": "not_found", "issues": None}
         return {
@@ -110,7 +123,7 @@ class AiService(AbstractReviewService):
         }
 
     def find_issue(self, review_id: str, issue_id: str) -> Issue | None:
-        sess = self._reviews.get(review_id)
+        sess = self._store.get(review_id)
         if not sess or not sess.issues:
             return None
         issues = sess.issues
@@ -127,7 +140,7 @@ class AiService(AbstractReviewService):
 
     def kickoff_review(self, review_id: str) -> None:
         """同期メソッド。BackgroundTasks から呼ばれて非同期レビューを実行する。"""
-        sess = self._reviews.get(review_id)
+        sess = self._store.get(review_id)
         if not sess or sess.issues is not None:
             return
 
@@ -138,7 +151,7 @@ class AiService(AbstractReviewService):
                 logger.debug("failed to handle ADK event", exc_info=True)
 
         try:
-            issues = asyncio.run(self.adk_service.run_review_async(sess.prd_text, on_event=_on_event))
+            issues = self._review_runner.run_blocking(sess.prd_text, on_event=_on_event)
         except Exception as err:  # nosec B110
             message = _extract_error_message(err)
             sess.status = "failed"
@@ -162,7 +175,7 @@ class AiService(AbstractReviewService):
         sess.phase_message = "レビューが完了しました"
 
     def update_issue_status(self, review_id: str, issue_id: str, status: str) -> bool:
-        sess = self._reviews.get(review_id)
+        sess = self._store.get(review_id)
         if not sess or not sess.issues:
             return False
         issues = sess.issues
@@ -174,7 +187,7 @@ class AiService(AbstractReviewService):
         return False
 
     def get_review_summary(self, review_id: str) -> dict[str, Any]:
-        sess = self._reviews.get(review_id)
+        sess = self._store.get(review_id)
         if not sess:
             empty = SummaryStatistics()
             return ReviewSummaryResponse(status="not_found", statistics=empty, issues=[]).model_dump()
@@ -230,36 +243,28 @@ class AiService(AbstractReviewService):
         if not expected:
             return
 
-        candidate_names: list[str] = []
-        author = getattr(event, "author", None)
-        if isinstance(author, str):
-            candidate_names.append(author)
-        branch = getattr(event, "branch", None)
-        if isinstance(branch, str) and branch:
-            candidate_names.extend([segment for segment in branch.split(".") if segment])
+        matched_agents: list[str] = []
+        state_delta = getattr(getattr(event, "actions", None), "state_delta", None)
+        if isinstance(state_delta, dict):
+            for state_key in state_delta:
+                agent_key = STATE_KEY_TO_AGENT_KEY.get(state_key)
+                if agent_key and agent_key in expected:
+                    matched_agents.append(agent_key)
 
-        matched: str | None = None
-        for name in candidate_names:
-            if name in expected:
-                matched = name
-                break
-
-        if not matched:
-            if candidate_names:
-                logger.debug(
-                    "adk event did not match expected agents",
-                    extra={
-                        "candidates": candidate_names,
-                        "expected": expected,
-                        "event_author": getattr(event, "author", None),
-                        "event_branch": getattr(event, "branch", None),
-                    },
-                )
+        if not matched_agents:
+            logger.debug(
+                "adk event did not include known state updates",
+                extra={
+                    "expected": expected,
+                    "state_delta_keys": list(state_delta.keys()) if isinstance(state_delta, dict) else None,
+                },
+            )
             return
 
-        if matched not in sess.completed_agents:
-            sess.completed_agents.append(matched)
-            self._recalculate_progress(sess, last_completed=matched)
+        newly_completed = [agent for agent in matched_agents if agent not in sess.completed_agents]
+        if newly_completed:
+            sess.completed_agents.extend(newly_completed)
+            self._recalculate_progress(sess, last_completed=newly_completed[-1])
 
     def _recalculate_progress(self, sess: ReviewRuntimeSession, *, last_completed: str | None = None) -> None:
         total = len(sess.expected_agents)

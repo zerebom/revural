@@ -17,8 +17,8 @@ from hibikasu_agent.agents.parallel_orchestrator.agent import (
     create_coordinator_agent,
     create_parallel_review_agent,
 )
-from hibikasu_agent.api.schemas import Issue as ApiIssue
-from hibikasu_agent.api.schemas import IssueSpan
+from hibikasu_agent.api.schemas.reviews import Issue as ApiIssue
+from hibikasu_agent.api.schemas.reviews import IssueSpan
 from hibikasu_agent.utils.logging_config import get_logger
 
 logger = get_logger(__name__)

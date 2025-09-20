@@ -71,4 +71,8 @@ STATE_KEY_TO_AGENT_KEY: Mapping[str, str] = {
     definition.state_key: definition.agent_key for definition in SPECIALIST_DEFINITIONS
 }
 
+ROLE_TO_DEFINITION: Mapping[str, SpecialistDefinition] = {
+    definition.role: definition for definition in SPECIALIST_DEFINITIONS
+}
+
 SPECIALIST_AGENT_KEYS: tuple[str, ...] = tuple(definition.agent_key for definition in SPECIALIST_DEFINITIONS)

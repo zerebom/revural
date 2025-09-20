@@ -8,8 +8,8 @@ from typing import cast
 from google.adk.agents import LlmAgent
 from pydantic import BaseModel as PydanticBaseModel
 
-from hibikasu_agent.constants.agents import SpecialistDefinition
-from hibikasu_agent.schemas import IssuesResponse
+from hibikasu_agent.constants.agents import ROLE_TO_DEFINITION, SpecialistDefinition
+from hibikasu_agent.schemas.models import IssuesResponse
 from hibikasu_agent.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -103,55 +103,39 @@ def create_specialist(  # noqa: PLR0913
     return agent
 
 
-def create_specialist_from_role(  # noqa: PLR0913
-    role_key: str,
+def create_specialist_from_definition(
+    definition: SpecialistDefinition,
     *,
-    name: str,
-    description: str,
     model: str = "gemini-2.5-flash",
-    purpose: str = "review",  # "review" or "chat"
-    output_schema: type[PydanticBaseModel] | None = None,
-    output_key: str | None = None,
 ) -> LlmAgent:
-    """Create a specialist using prompts loaded by role key.
+    """Create a specialist agent using a shared configuration entry."""
 
-    Args:
-        role_key: Key in TOML under which prompts are stored (e.g., "engineer").
-        name: Agent unique name.
-        description: Agent description.
-        model: LLM model name.
-        output_schema: Structured output schema.
-    """
     prompts = load_agent_prompts()
-    role_cfg = prompts.get(role_key, {})
-
-    # Purpose-specific single instruction keys (no legacy fallbacks)
-    if purpose == "chat":
-        instr = (role_cfg.get("instruction_chat") or "").strip()
-        # For chat, avoid output_schema/output_key to keep transfer unrestricted
-        return create_specialist(
-            name=name,
-            description=description,
-            model=model,
-            instruction=instr,
-            output_schema=None,
-            output_key=None,
-        )
-
-    # review (default)
-    instr = (role_cfg.get("instruction_review") or "").strip()
-
-    # Ensure review uses IssuesResponse schema by default
-    output_schema_use = cast(type[PydanticBaseModel], IssuesResponse) if output_schema is None else output_schema
+    role_cfg = prompts.get(definition.role, {})
+    instruction = (role_cfg.get("instruction_review") or "").strip()
 
     return create_specialist(
-        name=name,
-        description=description,
+        name=definition.agent_key,
+        description=definition.review_description,
         model=model,
-        instruction=instr,
-        output_schema=output_schema_use,
-        output_key=output_key,
+        instruction=instruction,
+        output_schema=cast(type[PydanticBaseModel], IssuesResponse),
+        output_key=definition.state_key,
     )
+
+
+def create_specialist_for_role(
+    role: str,
+    *,
+    model: str = "gemini-2.5-flash",
+) -> LlmAgent:
+    """Convenience wrapper that builds a specialist from a role identifier."""
+
+    try:
+        definition = ROLE_TO_DEFINITION[role]
+    except KeyError as exc:  # pragma: no cover - defensive guard
+        raise ValueError(f"Unknown specialist role: {role}") from exc
+    return create_specialist_from_definition(definition, model=model)
 
 
 def create_specialists_from_config(
@@ -161,18 +145,7 @@ def create_specialists_from_config(
 ) -> list[LlmAgent]:
     """Build review specialists from shared configuration entries."""
 
-    agents: list[LlmAgent] = []
-    for definition in definitions:
-        agents.append(
-            create_specialist_from_role(
-                definition.role,
-                name=definition.agent_key,
-                description=definition.review_description,
-                model=model,
-                output_key=definition.state_key,
-            )
-        )
-    return agents
+    return [create_specialist_from_definition(definition, model=model) for definition in definitions]
 
 
 def create_role_agents(
@@ -187,20 +160,29 @@ def create_role_agents(
     Returns:
         (review_agent, chat_agent)
     """
+    definition = ROLE_TO_DEFINITION.get(role_key)
+    if definition is None:  # pragma: no cover - defensive guard
+        raise ValueError(f"Unknown specialist role: {role_key}")
+
+    prompts = load_agent_prompts()
+    role_cfg = prompts.get(role_key, {})
     prefix = name_prefix or role_key
-    review_agent = create_specialist_from_role(
-        role_key,
+
+    review_instruction = (role_cfg.get("instruction_review") or "").strip()
+    review_agent = create_specialist(
         name=f"{prefix}_specialist",
         description=f"{role_key} の専門的観点からPRDをレビュー",
         model=model,
-        purpose="review",
+        instruction=review_instruction,
+        output_schema=cast(type[PydanticBaseModel], IssuesResponse),
         output_key=review_output_key,
     )
-    chat_agent = create_specialist_from_role(
-        role_key,
+
+    chat_instruction = (role_cfg.get("instruction_chat") or "").strip()
+    chat_agent = create_specialist(
         name=f"{prefix}_chat",
         description=f"{role_key} の専門的観点でユーザーの質問に回答",
         model=model,
-        purpose="chat",
+        instruction=chat_instruction,
     )
     return review_agent, chat_agent

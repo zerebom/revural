@@ -24,12 +24,12 @@
 **背景:** `AiService` がセッションのインメモリ管理と ADK の非同期プロセス実行を両方担っており、責務が密結合している。
 **対象ファイル:** `src/hibikasu_agent/services/ai_service.py`
 
-- [ ] レビューセッション (`_reviews`辞書) の状態管理に特化した `ReviewSessionStore` クラスを新規に作成する。
-- [ ] `new_review_session`, `get_review_session`, `find_issue`, `update_issue_status` 等のセッション操作メソッドを `AiService` から `ReviewSessionStore` に移管する。
-- [ ] `AiService` は `ReviewSessionStore` のインスタンスを保持し、セッション操作はそちらに委譲する形に変更する。
-- [ ] ADK の実行ロジック (`kickoff_review` の中身) をカプセル化する `AdkReviewRunner` クラスまたはモジュールを新規に作成する。
-- [ ] `AdkReviewRunner` に、`async def run(...)` のような純粋な非同期メソッドを実装し、`asyncio.run` の呼び出しを `AiService` から分離する。
-- [ ] `AiService` の `kickoff_review` は、`AdkReviewRunner` の `run` メソッドを呼び出す（またはバックグラウンドタスクとして起動する）責務のみを持つようにする。
+- [x] レビューセッション (`_reviews`辞書) の状態管理に特化した `ReviewSessionStore` クラスを新規に作成する。
+- [x] `new_review_session`, `get_review_session`, `find_issue`, `update_issue_status` 等のセッション操作メソッドを `AiService` から `ReviewSessionStore` に移管する。
+- [x] `AiService` は `ReviewSessionStore` のインスタンスを保持し、セッション操作はそちらに委譲する形に変更する。
+- [x] ADK の実行ロジック (`kickoff_review` の中身) をカプセル化する `AdkReviewRunner` クラスまたはモジュールを新規に作成する。
+- [x] `AdkReviewRunner` に、`async def run(...)` のような純粋な非同期メソッドを実装し、`asyncio.run` の呼び出しを `AiService` から分離する。
+- [x] `AiService` の `kickoff_review` は、`AdkReviewRunner` の `run` メソッドを呼び出す（またはバックグラウンドタスクとして起動する）責務のみを持つようにする。
 
 ### 1-3. エージェント生成ロジックの段階的な移行
 **背景:** `create_specialist_from_role` 等のファクトリが複数の箇所で利用されており、一斉な変更は破壊的変更につながる。
@@ -41,9 +41,9 @@
 - **フェーズ2: オーケストレーターの移行**
     - [x] `parallel_orchestrator/agent.py` での `create_specialist_from_role`, `create_role_agents` の呼び出しを、新しい `create_specialists_from_config` に置き換える。
 - **フェーズ3: 個別エージェントの移行**
-    - [ ] `agents/{engineer,ux_designer,qa_tester,pm}/agent.py` で `create_specialist_from_role` を利用している箇所を、新しい設定ベースのファクトリを利用するように変更するか、各エージェントが直接自身のインスタンスを生成するように変更する。
+    - [x] `agents/{engineer,ux_designer,qa_tester,pm}/agent.py` で `create_specialist_from_role` を利用している箇所を、新しい設定ベースのファクトリを利用するように変更するか、各エージェントが直接自身のインスタンスを生成するように変更する。
 - **フェーズ4 (最終):**
-    - [ ] すべての呼び出し元が移行されたことを確認した上で、古い `create_specialist_from_role` と `create_role_agents` を非推奨（deprecated）とし、最終的に削除する。
+    - [x] すべての呼び出し元が移行されたことを確認した上で、古い `create_specialist_from_role` と `create_role_agents` を非推奨（deprecated）とし、最終的に削除する。
 
 ---
 ---
@@ -64,8 +64,8 @@
 **背景:** ADK イベントの `author` 文字列への依存は脆弱である。
 **対象ファイル:** (リファクタリング後の `AdkReviewRunner` または関連クラス)
 
-- [ ] `_handle_adk_event` (または相当するメソッド) が `event.author` をパースする代わりに `event.actions.state_delta` を監視するように変更する。
-- [ ] `constants/agents.py` の `*_ISSUES_STATE_KEY` を参照し、`state_delta` にキーが出現したら対応するエージェントが完了したと判断するロジックを実装する。
+- [x] `_handle_adk_event` (または相当するメソッド) が `event.author` をパースする代わりに `event.actions.state_delta` を監視するように変更する。
+- [x] `constants/agents.py` の `*_ISSUES_STATE_KEY` を参照し、`state_delta` にキーが出現したら対応するエージェントが完了したと判断するロジックを実装する。
 
 ### 2-3. プロンプトの安全な外部ファイル化
 **背景:** プロンプトのハードコードはメンテナンス性が低く、パッケージングの考慮が必要。
@@ -93,8 +93,8 @@
 **背景:** プロジェクトの方針として、`__init__.py` によるファサードを設けず、importパスは実体のファイルパスと一致させることを優先する。
 **対象ファイル:** プロジェクト全体
 
-- [ ] `hibikasu_agent/api/schemas/__init__.py` や `hibikasu_agent/schemas/__init__.py` など、再エクスポートを行っている `__init__.py` をリストアップする。
-- [ ] `grep` 等で、これらのファサード経由でインポートしている箇所（例: `from hibikasu_agent.api.schemas import Issue`）をすべて特定する。
-- [ ] 特定したインポート文を、すべて実体のファイルパスからの直接インポート（例: `from hibikasu_agent.api.schemas.reviews import Issue`）に修正する。
-- [ ] プロジェクト内のすべての参照を更新した後、対象の `__init__.py` の中身を空にするか、ファイルを削除する。
+- [x] `hibikasu_agent/api/schemas/__init__.py` や `hibikasu_agent/schemas/__init__.py` など、再エクスポートを行っている `__init__.py` をリストアップする。
+- [x] `grep` 等で、これらのファサード経由でインポートしている箇所（例: `from hibikasu_agent.api.schemas import Issue`）をすべて特定する。
+- [x] 特定したインポート文を、すべて実体のファイルパスからの直接インポート（例: `from hibikasu_agent.api.schemas.reviews import Issue`）に修正する。
+- [x] プロジェクト内のすべての参照を更新した後、対象の `__init__.py` の中身を空にするか、ファイルを削除する。
 - [ ] **補足:** この作業は機械的な置換が多くなるため、IDEの検索・置換機能を活用して効率的に進める。

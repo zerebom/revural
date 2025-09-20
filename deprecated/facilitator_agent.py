@@ -1,7 +1,7 @@
 """Facilitator Agent implementation using Google ADK with multi-agent orchestration."""
 
 from google.adk.agents import LlmAgent
-from hibikasu_agent.schemas import Persona, ProjectSettings, Utterance
+from hibikasu_agent.schemas.models import Persona, ProjectSettings, Utterance
 from hibikasu_agent.utils.logging_config import get_logger
 
 logger = get_logger(__name__)

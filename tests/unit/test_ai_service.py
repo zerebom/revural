@@ -4,7 +4,7 @@ import asyncio
 from collections.abc import Callable
 from typing import Any
 
-from hibikasu_agent.api.schemas import Issue
+from hibikasu_agent.api.schemas.reviews import Issue
 from hibikasu_agent.services.ai_service import AiService
 
 
