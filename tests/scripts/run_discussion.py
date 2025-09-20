@@ -12,12 +12,7 @@ from pathlib import Path
 # project_root = Path(__file__).parent.parent.parent
 # sys.path.insert(0, str(project_root / "src"))
 from hibikasu_agent.agents.persona_agent import PersonaAgent
-from hibikasu_agent.schemas import (
-    DiscussionLog,
-    Persona,
-    ProjectSettings,
-    Utterance,
-)
+from hibikasu_agent.schemas.models import DiscussionLog, Persona, ProjectSettings, Utterance
 from hibikasu_agent.utils.logging_config import get_logger, setup_logging
 
 logger = get_logger(__name__)

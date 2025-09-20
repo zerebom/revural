@@ -2,9 +2,13 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable
+from types import SimpleNamespace
 from typing import Any
 
-from hibikasu_agent.api.schemas import Issue
+import hibikasu_agent.services.ai_service as ai_service_module
+import pytest
+from hibikasu_agent.api.schemas.reviews import Issue
+from hibikasu_agent.constants.agents import AGENT_STATE_KEYS, SPECIALIST_AGENT_KEYS
 from hibikasu_agent.services.ai_service import AiService
 
 
@@ -40,13 +44,15 @@ def test_kickoff_review_populates_session():
     assert data["issues"][0].issue_id == "UNIT-1"
 
 
-def test_answer_dialog_calls_provider():
+@pytest.mark.asyncio
+async def test_answer_dialog_calls_provider():
     svc = AiService(adk_service=_StubADK())
     rid = svc.new_review_session("PRD for unit test")
-    svc.kickoff_review(rid)
+    # kickoff_review is synchronous but uses asyncio.run internally; run it off the event loop.
+    await asyncio.to_thread(svc.kickoff_review, rid)
     issue_id = svc.reviews_in_memory[rid].issues[0].issue_id  # type: ignore[index]
 
-    out = asyncio.run(svc.answer_dialog(rid, issue_id, "Q?"))
+    out = await svc.answer_dialog(rid, issue_id, "Q?")
     assert out == f"ans:{issue_id}:Q?"
 
 
@@ -69,3 +75,43 @@ def test_kickoff_review_sets_failed_status_on_exception():
     assert data["phase"] == "failed"
     assert "ADK failed during aggregation" in (data["phase_message"] or "")
     assert svc.reviews_in_memory[rid].error == "ADK failed during aggregation"
+
+
+def test_handle_adk_event_updates_progress(monkeypatch):
+    svc = AiService(adk_service=_StubADK())
+    rid = svc.new_review_session("PRD for unit test")
+    session = svc.reviews_in_memory[rid]
+    first_agent, second_agent = SPECIALIST_AGENT_KEYS[:2]
+    session.expected_agents = [first_agent, second_agent]
+
+    state_key = AGENT_STATE_KEYS[first_agent]
+
+    class DummyEvent:
+        def __init__(self, delta: dict[str, object]):
+            self.actions = SimpleNamespace(state_delta=delta)
+
+    monkeypatch.setattr(ai_service_module, "ADKEvent", DummyEvent)
+
+    svc._handle_adk_event(session, DummyEvent({state_key: {"final_issues": []}}))
+
+    assert session.completed_agents == [first_agent]
+    assert session.progress == 0.5
+    assert session.phase_message.startswith("Engineer Specialist のレビューが完了しました")
+
+
+def test_handle_adk_event_ignores_unknown_keys(monkeypatch):
+    svc = AiService(adk_service=_StubADK())
+    rid = svc.new_review_session("PRD for unit test")
+    session = svc.reviews_in_memory[rid]
+    session.expected_agents = [SPECIALIST_AGENT_KEYS[0]]
+
+    class DummyEvent:
+        def __init__(self, delta: dict[str, object]):
+            self.actions = SimpleNamespace(state_delta=delta)
+
+    monkeypatch.setattr(ai_service_module, "ADKEvent", DummyEvent)
+
+    svc._handle_adk_event(session, DummyEvent({"unknown_state": {}}))
+
+    assert session.completed_agents == []
+    assert session.progress == 0.0

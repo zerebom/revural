@@ -9,10 +9,7 @@ from pydantic import ValidationError
 from hibikasu_agent.constants.agents import (
     AGENT_DISPLAY_NAMES,
     AGENT_STATE_KEYS,
-    ENGINEER_AGENT_KEY,
-    PM_AGENT_KEY,
-    QA_AGENT_KEY,
-    UX_AGENT_KEY,
+    SPECIALIST_DEFINITIONS,
 )
 from hibikasu_agent.schemas.models import (
     FinalIssue,
@@ -64,33 +61,30 @@ def _load_issues_from_state(state: dict[str, Any], key: str) -> IssuesResponse:
     raise TypeError(f"Unexpected state payload type for {key}: {type(raw)!r}")
 
 
-def aggregate_final_issues(tool_context: ToolContext) -> dict[str, Any]:
-    """Aggregate specialist outputs stored in state and return a serializable payload."""
+def _calculate_issue_priorities(issues: list[FinalIssue]) -> list[FinalIssue]:
+    """Order issues by severity and assign sequential priority values."""
+
+    severity_order = {"High": 0, "Mid": 1, "Low": 2}
+    prioritized = sorted(issues, key=lambda item: severity_order.get(item.severity, 3))
+    for idx, issue in enumerate(prioritized, start=1):
+        issue.priority = idx
+    return prioritized
+
+
+def aggregate_final_issues(tool_context: ToolContext) -> FinalIssuesResponse:
+    """Aggregate specialist outputs stored in state and return a typed response."""
 
     state = getattr(tool_context, "state", {}) or {}
 
-    engineer = _load_issues_from_state(state, AGENT_STATE_KEYS[ENGINEER_AGENT_KEY])
-    ux = _load_issues_from_state(state, AGENT_STATE_KEYS[UX_AGENT_KEY])
-    qa = _load_issues_from_state(state, AGENT_STATE_KEYS[QA_AGENT_KEY])
-    pm = _load_issues_from_state(state, AGENT_STATE_KEYS[PM_AGENT_KEY])
-
     final_items: list[FinalIssue] = []
-    final_items.extend(_to_final_issues(ENGINEER_AGENT_KEY, engineer))
-    final_items.extend(_to_final_issues(UX_AGENT_KEY, ux))
-    final_items.extend(_to_final_issues(QA_AGENT_KEY, qa))
-    final_items.extend(_to_final_issues(PM_AGENT_KEY, pm))
+    for definition in SPECIALIST_DEFINITIONS:
+        issues = _load_issues_from_state(state, AGENT_STATE_KEYS[definition.agent_key])
+        final_items.extend(_to_final_issues(definition.agent_key, issues))
 
-    severity_order = {"High": 0, "Mid": 1, "Low": 2}
-    final_items.sort(key=lambda item: severity_order.get(item.severity, 3))
-    for idx, issue in enumerate(final_items, start=1):
-        issue.priority = idx
-
-    response = FinalIssuesResponse(final_issues=final_items)
-    response_dict = response.model_dump()
-    # Persist for downstream consumers (ADKService.run_review_async expects this key)
-    state["final_review_issues"] = response_dict
-    logger.info("Aggregated final issues", count=len(final_items))
-    return response_dict
+    prioritized = _calculate_issue_priorities(final_items)
+    response = FinalIssuesResponse(final_issues=prioritized)
+    logger.info("Aggregated final issues", count=len(prioritized))
+    return response
 
 
 AGGREGATE_FINAL_ISSUES_TOOL = aggregate_final_issues

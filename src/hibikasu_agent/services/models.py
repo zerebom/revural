@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from hibikasu_agent.api.schemas import Issue
+from hibikasu_agent.api.schemas.reviews import Issue
 
 
 class ReviewRuntimeSession(BaseModel):

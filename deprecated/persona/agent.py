@@ -1,7 +1,7 @@
 """Persona Agent for ADK integration."""
 
 from google.adk.agents import LlmAgent
-from hibikasu_agent.schemas import Persona
+from hibikasu_agent.schemas.models import Persona
 
 
 def create_persona_agent(persona: Persona, model: str = "gemini-2.5-flash") -> LlmAgent:

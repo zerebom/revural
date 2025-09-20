@@ -1,7 +1,7 @@
 """Facilitator agent for ADK Web integration."""
 
 from hibikasu_agent.agents.facilitator_agent import FacilitatorAgent
-from hibikasu_agent.schemas import Persona, ProjectSettings
+from hibikasu_agent.schemas.models import Persona, ProjectSettings
 
 # Create sample personas for the facilitator
 sample_personas = [

@@ -2,7 +2,7 @@
 
 from hibikasu_agent import __version__
 from hibikasu_agent.agents.specialist import create_specialist
-from hibikasu_agent.schemas import Issue, ReviewSession
+from hibikasu_agent.schemas.models import Issue, ReviewSession
 from hibikasu_agent.utils.logging_config import get_logger, setup_logging
 
 

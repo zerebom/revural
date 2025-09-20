@@ -11,7 +11,7 @@ from hibikasu_agent.agents.prompts import (
     create_initial_prompt,
     create_persona_prompt,
 )
-from hibikasu_agent.schemas import Persona, Utterance
+from hibikasu_agent.schemas.models import Persona, Utterance
 from hibikasu_agent.utils.logging_config import get_logger
 
 logger = get_logger(__name__)

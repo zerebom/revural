@@ -4,7 +4,7 @@ import time
 import uuid
 from collections import Counter
 
-from hibikasu_agent.api.schemas import (
+from hibikasu_agent.api.schemas.reviews import (
     AgentCount,
     Issue,
     IssueSpan,

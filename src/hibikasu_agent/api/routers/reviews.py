@@ -5,7 +5,7 @@ from typing import Any
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
 from hibikasu_agent.api.dependencies import get_review_service
-from hibikasu_agent.api.schemas import (
+from hibikasu_agent.api.schemas.reviews import (
     ApplySuggestionResponse,
     DialogRequest,
     DialogResponse,

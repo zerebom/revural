@@ -1,7 +1,7 @@
 """Test persona agent implementation."""
 
 from google.adk.agents import LlmAgent
-from hibikasu_agent.schemas import Persona
+from hibikasu_agent.schemas.models import Persona
 
 # Create a test persona
 test_persona = Persona(

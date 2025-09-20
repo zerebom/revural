@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import Generator
 
 import pytest
-from hibikasu_agent.api.schemas import Issue
+from hibikasu_agent.api.schemas.reviews import Issue
 from hibikasu_agent.services.providers.adk import ADKService
 
 

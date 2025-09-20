@@ -1,11 +1,6 @@
-"""Engineer Specialist Agent for ADK Web discovery."""
+"""Engineer specialist agent for ADK auto-discovery."""
 
-from hibikasu_agent.agents.specialist import create_specialist_from_role
+from hibikasu_agent.agents.specialist import create_specialist_for_role
 
 # Export the agent for ADK Web auto-discovery
-root_agent = create_specialist_from_role(
-    "engineer",
-    name="engineer_specialist",
-    description="バックエンドエンジニアの専門的観点からPRDをレビュー",
-    model="gemini-2.5-flash",
-)
+root_agent = create_specialist_for_role("engineer")

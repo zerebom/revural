@@ -1,6 +1,6 @@
 """Prompt templates for Persona Agents."""
 
-from hibikasu_agent.schemas import Persona, Utterance
+from hibikasu_agent.schemas.models import Persona, Utterance
 
 
 def create_persona_instruction(persona: Persona, topic: str) -> str:
