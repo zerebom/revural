@@ -14,11 +14,11 @@
 **背景:** `ADKService` が Span 計算、Issue 変換、セッション生成、Runner 実行など多くの責務を抱えている。
 **対象ファイル:** `src/hibikasu_agent/services/providers/adk.py`
 
-- [ ] `src/hibikasu_agent/utils/` ディレクトリに `span_calculator.py` を新規作成し、`_normalize_text`, `_calculate_span` などの Span 計算関連のメソッド群を純粋な関数として移管する。
-- [ ] `ADKService` から Span 計算ロジックを削除し、新しい `span_calculator` モジュールを呼び出すように変更する。
-- [ ] ADK のセッションと `Runner` の初期化処理（`InMemorySessionService` の生成、ID生成、`Runner` のインスタンス化）を、`AdkSessionFactory` のような専用のファクトリクラスまたは関数に切り出す。
-- [ ] `run_review_async` 内の `Runner` 初期化処理を、この新しいファクトリの呼び出しに置き換える。
-- [ ] `_create_api_issue` メソッドの責務を見直し、辞書から `ApiIssue` オブジェクトへの変換ロジックを、`api/mappers.py` のような専用のマッパーモジュールに分離することを検討する。
+- [x] `src/hibikasu_agent/utils/` ディレクトリに `span_calculator.py` を新規作成し、`_normalize_text`, `_calculate_span` などの Span 計算関連のメソッド群を純粋な関数として移管する。
+- [x] `ADKService` から Span 計算ロジックを削除し、新しい `span_calculator` モジュールを呼び出すように変更する。
+- [x] ADK のセッションと `Runner` の初期化処理（`InMemorySessionService` の生成、ID生成、`Runner` のインスタンス化）を、`AdkSessionFactory` のような専用のファクトリクラスまたは関数に切り出す。
+- [x] `run_review_async` 内の `Runner` 初期化処理を、この新しいファクトリの呼び出しに置き換える。
+- [x] `_create_api_issue` メソッドの責務を見直し、辞書から `ApiIssue` オブジェクトへの変換ロジックを、`api/mappers.py` のような専用のマッパーモジュールに分離することを検討する。
 
 ### 1-2. レビューセッション管理と ADK 実行の分離
 **背景:** `AiService` がセッションのインメモリ管理と ADK の非同期プロセス実行を両方担っており、責務が密結合している。
