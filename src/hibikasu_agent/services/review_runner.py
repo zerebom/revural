@@ -21,17 +21,19 @@ class AdkReviewRunner:
         prd_text: str,
         *,
         on_event: Callable[[Any], None] | None = None,
+        selected_agents: list[str] | None = None,
     ) -> list[Issue]:
         """Execute the review asynchronously and yield issues returned by the provider."""
 
-        return await self._adk_service.run_review_async(prd_text, on_event=on_event)
+        return await self._adk_service.run_review_async(prd_text, on_event=on_event, selected_agents=selected_agents)
 
     def run_blocking(
         self,
         prd_text: str,
         *,
         on_event: Callable[[Any], None] | None = None,
+        selected_agents: list[str] | None = None,
     ) -> list[Issue]:
         """Execute the review using a temporary event loop and return the result."""
 
-        return asyncio.run(self.run_async(prd_text, on_event=on_event))
+        return asyncio.run(self.run_async(prd_text, on_event=on_event, selected_agents=selected_agents))

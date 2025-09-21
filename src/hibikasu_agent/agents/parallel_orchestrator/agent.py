@@ -42,8 +42,15 @@ class FinalIssuesAggregatorAgent(BaseAgent):
         yield Event(author=self.name, content=content, actions=event_actions)
 
 
-def create_parallel_review_agent(model: str = "gemini-2.5-flash") -> SequentialAgent:
+def create_parallel_review_agent(
+    model: str = "gemini-2.5-flash", *, selected_agents: list[str] | None = None
+) -> SequentialAgent:
     """Build the review workflow agent using a sequential pipeline based on ADK best practices.
+
+    Args:
+        model: The LLM model to use for all agents
+        selected_agents: Optional list of agent roles to include. If None, all agents are used.
+                        Valid roles: "engineer", "ux_designer", "qa_tester", "pm"
 
     Flow:
     1) Four specialist review agents run concurrently via ParallelAgent and
@@ -52,9 +59,19 @@ def create_parallel_review_agent(model: str = "gemini-2.5-flash") -> SequentialA
        and emits the final structured review result without additional LLM calls.
     """
 
+    # Filter definitions based on selected agents
+    if selected_agents is not None:
+        filtered_definitions = [
+            definition for definition in SPECIALIST_DEFINITIONS if definition.role in selected_agents
+        ]
+        if not filtered_definitions:
+            raise ValueError(f"No valid agents found for roles: {selected_agents}")
+    else:
+        filtered_definitions = list(SPECIALIST_DEFINITIONS)
+
     # 1) Specialists with explicit output keys defined via shared config
     review_agents = create_specialists_from_config(
-        SPECIALIST_DEFINITIONS,
+        filtered_definitions,
         model=model,
     )
 

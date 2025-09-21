@@ -25,3 +25,6 @@ class ReviewRuntimeSession(BaseModel):
     eta_seconds: int | None = Field(default=None, description="Estimated remaining time in seconds")
     expected_agents: list[str] = Field(default_factory=list, description="Agent names scheduled to run")
     completed_agents: list[str] = Field(default_factory=list, description="Agent names that finished")
+    selected_agent_roles: list[str] | None = Field(
+        default=None, description="Original agent roles selected for this review session"
+    )

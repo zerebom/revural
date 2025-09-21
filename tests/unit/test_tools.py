@@ -65,8 +65,11 @@ def test_aggregate_final_issues_orders_by_severity() -> None:
     severities = [issue.severity for issue in final_issues]
     assert severities[: len(definitions)] == ["High"] * len(definitions)
     assert severities[len(definitions) :] == ["Low"] * len(definitions)
-    # Priority should be sequential starting at 1
-    assert [issue.priority for issue in final_issues] == list(range(1, len(final_issues) + 1))
+    # Priority should follow severity mapping (duplicates allowed)
+    priorities = [issue.priority for issue in final_issues]
+    assert priorities.count(1) == len(definitions)
+    assert priorities.count(3) == len(definitions)
+    assert set(priorities).issubset({1, 2, 3})
 
 
 def test_aggregate_final_issues_handles_missing_state() -> None:

@@ -23,6 +23,7 @@ logger = get_logger(__name__)
 
 
 MAX_ISSUES_PER_AGENT = 5
+PRIORITY_MAP = {"High": 1, "Mid": 2, "Low": 3}
 
 
 def _to_final_issues(agent_key: str, issues_resp: IssuesResponse) -> list[FinalIssue]:
@@ -32,12 +33,15 @@ def _to_final_issues(agent_key: str, issues_resp: IssuesResponse) -> list[FinalI
     for item in items:
         # Items are already IssueItem; normalize severity and map
         parsed: IssueItem = item
+        normalized_severity = parsed.normalize_severity()
+        priority_value = PRIORITY_MAP.get(normalized_severity, 3)
+
         final_items.append(
             FinalIssue(
                 issue_id=str(uuid4()),
-                priority=0,  # set later
+                priority=priority_value,
                 agent_name=AGENT_DISPLAY_NAMES.get(agent_key, agent_key),
-                severity=parsed.normalize_severity(),
+                severity=normalized_severity,
                 comment=parsed.comment,
                 original_text=parsed.original_text,
             )
@@ -62,13 +66,9 @@ def _load_issues_from_state(state: dict[str, Any], key: str) -> IssuesResponse:
 
 
 def _calculate_issue_priorities(issues: list[FinalIssue]) -> list[FinalIssue]:
-    """Order issues by severity and assign sequential priority values."""
+    """Order issues by their priority (already normalized to 1/2/3)."""
 
-    severity_order = {"High": 0, "Mid": 1, "Low": 2}
-    prioritized = sorted(issues, key=lambda item: severity_order.get(item.severity, 3))
-    for idx, issue in enumerate(prioritized, start=1):
-        issue.priority = idx
-    return prioritized
+    return sorted(issues, key=lambda item: item.priority)
 
 
 def aggregate_final_issues(tool_context: ToolContext) -> FinalIssuesResponse:

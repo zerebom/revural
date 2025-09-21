@@ -8,6 +8,19 @@ from hibikasu_agent.api.schemas.reviews import Issue as ApiIssue
 from hibikasu_agent.utils.span_calculator import calculate_span
 
 
+def _coerce_priority(value: object | None) -> int:
+    priority = 3
+    if isinstance(value, int):
+        priority = value
+    elif isinstance(value, str):
+        with suppress(ValueError):
+            priority = int(value)
+
+    if priority < 1 or priority > 3:
+        return 3
+    return priority
+
+
 def map_api_issue(item: dict[str, object], prd_text: str) -> ApiIssue:
     """Transform a raw ADK issue dictionary into an API response model."""
 
@@ -22,13 +35,7 @@ def map_api_issue(item: dict[str, object], prd_text: str) -> ApiIssue:
             head = original_text.strip()
         _summary = (head[:80] + ("…" if len(head) > 80 else "")) if head else ""
 
-    priority_value = item.get("priority")
-    priority = 0
-    if isinstance(priority_value, int):
-        priority = priority_value
-    elif isinstance(priority_value, str):
-        with suppress(ValueError):
-            priority = int(priority_value)
+    priority = _coerce_priority(item.get("priority"))
 
     return ApiIssue(
         issue_id=str(item.get("issue_id") or ""),

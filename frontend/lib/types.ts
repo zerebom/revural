@@ -3,9 +3,11 @@ export interface IssueSpan {
   end_index: number;
 }
 
+export type IssuePriority = 1 | 2 | 3;
+
 export interface Issue {
   issue_id: string;
-  priority: number;
+  priority: IssuePriority;
   agent_name: string;
   summary: string;
   comment: string;

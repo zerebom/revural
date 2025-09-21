@@ -54,18 +54,45 @@ class ADKService:
 
         return list(self._default_specialist_agents)
 
+    @property
+    def available_agent_roles(self) -> list[str]:
+        """Returns available agent roles that can be selected for reviews."""
+        from hibikasu_agent.constants.agents import SPECIALIST_DEFINITIONS
+
+        return [definition.role for definition in SPECIALIST_DEFINITIONS]
+
+    def get_selected_agent_keys(self, selected_roles: list[str] | None = None) -> list[str]:
+        """Convert role names to agent keys, filtering available specialists."""
+        from hibikasu_agent.constants.agents import ROLE_TO_DEFINITION
+
+        if selected_roles is None:
+            return self.default_review_agents
+
+        selected_keys = []
+        for role in selected_roles:
+            if role in ROLE_TO_DEFINITION:
+                selected_keys.append(ROLE_TO_DEFINITION[role].agent_key)
+
+        return selected_keys if selected_keys else self.default_review_agents
+
     async def run_review_async(
         self,
         prd_text: str,
         *,
         on_event: Callable[[Event], None] | None = None,
+        selected_agents: list[str] | None = None,
     ) -> list[ApiIssue]:
         """
         PRDのレビューを非同期で実行する。呼び出し毎に独立した ADK セッションを生成・破棄する。
+
+        Args:
+            prd_text: レビュー対象のPRDテキスト
+            on_event: イベントコールバック関数
+            selected_agents: 使用するエージェントのロール一覧（例: ["engineer", "pm"]）
         """
         try:
             model_name = os.getenv("ADK_MODEL") or "gemini-2.5-flash-lite"
-            agent = create_parallel_review_agent(model=model_name)
+            agent = create_parallel_review_agent(model=model_name, selected_agents=selected_agents)
 
             session_ctx: AdkSessionContext = await self._session_factory.create_session(agent)
 
@@ -105,6 +132,7 @@ class ADKService:
                     "final_issues": len(final_issues),
                     "state_keys": list(state.keys()) if isinstance(state, dict) else None,
                     "elapsed_ms": _elapsed_ms,
+                    "selected_agents": selected_agents,
                 },
             )
 

@@ -7,16 +7,17 @@ from hibikasu_agent.services.mappers.api_issue_mapper import map_api_issue
 def test_map_api_issue_uses_summary_if_present() -> None:
     item = {
         "issue_id": "1",
-        "priority": 2,
+        "priority": 1,
         "agent_name": "engineer_specialist",
         "summary": "Provided summary",
         "comment": "comment",
         "original_text": "abc",
+        "severity": "High",
     }
     issue = map_api_issue(item, "abc")
     assert isinstance(issue, ApiIssue)
     assert issue.summary == "Provided summary"
-    assert issue.priority == 2
+    assert issue.priority == 1
 
 
 def test_map_api_issue_derives_summary_from_comment() -> None:
@@ -27,6 +28,7 @@ def test_map_api_issue_derives_summary_from_comment() -> None:
         "agent_name": "pm_specialist",
         "comment": comment,
         "original_text": "abc",
+        "severity": "low",
     }
     issue = map_api_issue(item, "abc")
     assert issue.summary.startswith("First sentence")
@@ -41,6 +43,19 @@ def test_map_api_issue_handles_missing_priority() -> None:
         "original_text": "snippet",
     }
     issue = map_api_issue(item, "---snippet---")
-    assert issue.priority == 0
+    assert issue.priority == 3
     assert issue.summary == "snippet"
     assert issue.span is not None
+
+
+def test_map_api_issue_defaults_to_low_priority_when_severity_unknown() -> None:
+    item = {
+        "issue_id": "4",
+        "priority": 99,
+        "agent_name": "qa_specialist",
+        "comment": "comment",
+        "original_text": "text",
+        "severity": "improbable",
+    }
+    issue = map_api_issue(item, "text")
+    assert issue.priority == 3

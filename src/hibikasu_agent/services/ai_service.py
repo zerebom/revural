@@ -82,15 +82,31 @@ class AiService(AbstractReviewService):
     def reviews_in_memory(self) -> dict[str, ReviewRuntimeSession]:
         return self._store.as_dict()
 
-    def new_review_session(self, prd_text: str, panel_type: str | None = None) -> str:
+    def new_review_session(
+        self, prd_text: str, panel_type: str | None = None, *, selected_agents: list[str] | None = None
+    ) -> str:
+        """Create a new review session with optional agent selection.
+
+        Args:
+            prd_text: The PRD text to review
+            panel_type: Optional panel type for categorization
+            selected_agents: Optional list of agent roles to use (e.g., ["engineer", "pm"])
+        """
         review_id = str(uuid.uuid4())
-        raw_expected = getattr(self.adk_service, "default_review_agents", SPECIALIST_AGENT_KEYS)
-        if callable(raw_expected):  # defensive for stubs returning a factory
-            raw_expected = raw_expected()
-        expected_agents = list(raw_expected or SPECIALIST_AGENT_KEYS)
+
+        # Get expected agent keys based on selection
+        if selected_agents is not None:
+            expected_agents = self.adk_service.get_selected_agent_keys(selected_agents)
+        else:
+            raw_expected = getattr(self.adk_service, "default_review_agents", SPECIALIST_AGENT_KEYS)
+            if callable(raw_expected):  # defensive for stubs returning a factory
+                raw_expected = raw_expected()
+            expected_agents = list(raw_expected or SPECIALIST_AGENT_KEYS)
+
         phase_message = None
         if expected_agents:
             phase_message = f"{len(expected_agents)}名の専門家がレビューを開始しました"
+
         session = ReviewRuntimeSession(
             created_at=time.time(),
             status="processing",
@@ -102,6 +118,7 @@ class AiService(AbstractReviewService):
             progress=0.0,
             phase="processing",
             phase_message=phase_message,
+            selected_agent_roles=selected_agents,  # Store original selection
         )
         self._store.create(review_id, session)
         return review_id
@@ -151,7 +168,9 @@ class AiService(AbstractReviewService):
                 logger.debug("failed to handle ADK event", exc_info=True)
 
         try:
-            issues = self._review_runner.run_blocking(sess.prd_text, on_event=_on_event)
+            issues = self._review_runner.run_blocking(
+                sess.prd_text, on_event=_on_event, selected_agents=sess.selected_agent_roles
+            )
         except Exception as err:  # nosec B110
             message = _extract_error_message(err)
             sess.status = "failed"

@@ -18,6 +18,7 @@ class _StubADK:
         prd_text: str,
         *,
         on_event: Callable[[Any], None] | None = None,
+        selected_agents: list[str] | None = None,
     ) -> list[Issue]:
         return [
             Issue(
@@ -57,7 +58,7 @@ async def test_answer_dialog_calls_provider():
 
 
 class _ErrorADK:
-    async def run_review_async(self, prd_text: str, *, on_event=None):  # type: ignore[no-untyped-def]
+    async def run_review_async(self, prd_text: str, *, on_event=None, selected_agents=None):  # type: ignore[no-untyped-def]
         raise RuntimeError("ADK failed during aggregation")
 
     async def answer_dialog_async(self, issue: Issue, question_text: str):  # type: ignore[no-untyped-def]

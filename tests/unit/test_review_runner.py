@@ -9,7 +9,7 @@ class _StubADKService:
     def __init__(self) -> None:
         self.calls = 0
 
-    async def run_review_async(self, prd_text: str, *, on_event=None):  # type: ignore[no-untyped-def]
+    async def run_review_async(self, prd_text: str, *, on_event=None, selected_agents=None):  # type: ignore[no-untyped-def]
         self.calls += 1
         if on_event:
             on_event(object())
