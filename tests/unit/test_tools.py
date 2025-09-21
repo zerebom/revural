@@ -26,7 +26,7 @@ def test_to_final_issues_preserves_original_text() -> None:
     """Ensure original_text is kept intact (no backend truncation)."""
 
     long_text = "a" * 200
-    issues = IssuesResponse(issues=[IssueItem(severity="High", comment="c", original_text=long_text)])
+    issues = IssuesResponse(issues=[IssueItem(priority=1, comment="c", original_text=long_text)])
 
     final_issues = _to_final_issues("engineer_specialist", issues)
 
@@ -34,12 +34,12 @@ def test_to_final_issues_preserves_original_text() -> None:
     assert final_issues[0].original_text == long_text
 
 
-def _make_issue_item(severity: str, comment: str) -> IssueItem:
-    return IssueItem(severity=severity, comment=comment, original_text=f"orig:{comment}")
+def _make_issue_item(priority: int, comment: str) -> IssueItem:
+    return IssueItem(priority=priority, comment=comment, original_text=f"orig:{comment}")
 
 
-def test_aggregate_final_issues_orders_by_severity() -> None:
-    """Aggregated issues must be sorted by severity with sequential priorities."""
+def test_aggregate_final_issues_orders_by_priority() -> None:
+    """Aggregated issues must be sorted by priority values."""
 
     state: dict[str, object] = {}
     # Only use the first two definitions for brevity
@@ -48,8 +48,8 @@ def test_aggregate_final_issues_orders_by_severity() -> None:
         state_key = AGENT_STATE_KEYS[definition.agent_key]
         issues = IssuesResponse(
             issues=[
-                _make_issue_item("Low", f"low-{definition.role}"),
-                _make_issue_item("High", f"high-{definition.role}"),
+                _make_issue_item(3, f"low-{definition.role}"),
+                _make_issue_item(1, f"high-{definition.role}"),
             ]
         )
         state[state_key] = issues
@@ -61,14 +61,10 @@ def test_aggregate_final_issues_orders_by_severity() -> None:
 
     final_issues = response.final_issues
     assert len(final_issues) == len(definitions) * 2
-    # High severity items should come first, followed by Low
-    severities = [issue.severity for issue in final_issues]
-    assert severities[: len(definitions)] == ["High"] * len(definitions)
-    assert severities[len(definitions) :] == ["Low"] * len(definitions)
-    # Priority should follow severity mapping (duplicates allowed)
+    # Issues should be ordered by ascending priority values
     priorities = [issue.priority for issue in final_issues]
-    assert priorities.count(1) == len(definitions)
-    assert priorities.count(3) == len(definitions)
+    assert priorities[: len(definitions)] == [1] * len(definitions)
+    assert priorities[len(definitions) :] == [3] * len(definitions)
     assert set(priorities).issubset({1, 2, 3})
 
 

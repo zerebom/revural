@@ -23,7 +23,6 @@ logger = get_logger(__name__)
 
 
 MAX_ISSUES_PER_AGENT = 5
-PRIORITY_MAP = {"High": 1, "Mid": 2, "Low": 3}
 
 
 def _to_final_issues(agent_key: str, issues_resp: IssuesResponse) -> list[FinalIssue]:
@@ -31,17 +30,13 @@ def _to_final_issues(agent_key: str, issues_resp: IssuesResponse) -> list[FinalI
     final_items: list[FinalIssue] = []
     items = issues_resp.issues[:MAX_ISSUES_PER_AGENT]
     for item in items:
-        # Items are already IssueItem; normalize severity and map
         parsed: IssueItem = item
-        normalized_severity = parsed.normalize_severity()
-        priority_value = PRIORITY_MAP.get(normalized_severity, 3)
 
         final_items.append(
             FinalIssue(
                 issue_id=str(uuid4()),
-                priority=priority_value,
+                priority=parsed.priority,
                 agent_name=AGENT_DISPLAY_NAMES.get(agent_key, agent_key),
-                severity=normalized_severity,
                 comment=parsed.comment,
                 original_text=parsed.original_text,
             )

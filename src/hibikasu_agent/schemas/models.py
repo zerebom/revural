@@ -13,7 +13,6 @@ class Issue(BaseModel):
     priority: int = Field(description="Priority for user presentation")
     agent_name: str = Field(description="Name of the agent that generated this issue")
     agent_avatar: str = Field(description="Avatar/icon identifier for the agent")
-    severity: str = Field(description="Severity level (High/Mid/Low)")
     comment: str = Field(description="The review comment text")
     original_text: str = Field(description="Quoted text from original PRD")
 
@@ -27,7 +26,6 @@ class FinalIssue(BaseModel):
     issue_id: str = Field(description="一意の指摘ID")
     priority: int = Field(description="優先順位（1が最高,2が中, 3が低）")
     agent_name: str = Field(description="指摘を挙げた専門家の名前")
-    severity: str = Field(description="深刻度（高/中/低）")
     summary: str = Field(
         default="",
         description="アコーディオンのヘッダーに表示するための一文程度の短い要約",
@@ -45,33 +43,11 @@ class FinalIssuesResponse(BaseModel):
 
 # Shared output schema across specialist agents
 class IssueItem(BaseModel):
-    """Minimal issue item produced by specialists.
+    """Minimal issue item produced by specialists."""
 
-    Accepts a broader set of severity labels and normalizes them to
-    one of: High / Mid / Low. Case-insensitive. Common synonyms like
-    major/medium/minor are supported.
-    """
-
-    severity: str = Field()
+    priority: int = Field(ge=1, le=3)
     comment: str = Field(min_length=1)
     original_text: str = Field(default="")
-
-    @staticmethod
-    def _map_severity(value: str) -> str:
-        v = (value or "").strip().lower()
-        if v in {"high", "major", "critical", "severe"}:
-            return "High"
-        if v in {"mid", "medium", "moderate"}:
-            return "Mid"
-        if v in {"low", "minor", "trivial"}:
-            return "Low"
-        # Fallback: try title-case known values; otherwise default to Mid to avoid hard failure
-        if v and v.title() in {"High", "Mid", "Low"}:
-            return v.title()
-        return "Mid"
-
-    def normalize_severity(self) -> str:
-        return self._map_severity(self.severity)
 
 
 class IssuesResponse(BaseModel):
@@ -81,18 +57,12 @@ class IssuesResponse(BaseModel):
 
 
 class SpecialistIssue(BaseModel):
-    """Model for individual issue from the legacy orchestrator tool.
+    """Model for individual issue from the legacy orchestrator tool."""
 
-    This aligns with the existing orchestrator/tools.py expectations.
-    """
-
-    severity: str = Field(pattern="^(High|Mid|Low|Medium)$")
+    priority: int = Field(ge=1, le=3)
     description: str = Field(min_length=1)
     recommendation: str = Field(default="")
     category: str = Field(default="")
-
-    def normalize_severity(self) -> str:
-        return "Mid" if self.severity == "Medium" else self.severity
 
 
 class ReviewSession(BaseModel):

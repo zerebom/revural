@@ -22,7 +22,13 @@ def shared_ai_service() -> AiService:
     """
 
     class _StubADK:
-        async def run_review_async(self, prd_text: str, *, on_event=None):  # type: ignore[no-untyped-def]
+        async def run_review_async(
+            self,
+            prd_text: str,
+            *,
+            on_event=None,
+            selected_agents=None,
+        ):  # type: ignore[no-untyped-def]
             from hibikasu_agent.api.schemas.reviews import Issue
 
             return [
