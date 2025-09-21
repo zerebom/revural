@@ -23,6 +23,7 @@ logger = get_logger(__name__)
 
 
 MAX_ISSUES_PER_AGENT = 5
+PRIORITY_MAP = {"High": 1, "Mid": 2, "Low": 3}
 
 
 def _to_final_issues(agent_key: str, issues_resp: IssuesResponse) -> list[FinalIssue]:
@@ -66,8 +67,8 @@ def _calculate_issue_priorities(issues: list[FinalIssue]) -> list[FinalIssue]:
 
     severity_order = {"High": 0, "Mid": 1, "Low": 2}
     prioritized = sorted(issues, key=lambda item: severity_order.get(item.severity, 3))
-    for idx, issue in enumerate(prioritized, start=1):
-        issue.priority = idx
+    for issue in prioritized:
+        issue.priority = PRIORITY_MAP.get(issue.severity, 3)
     return prioritized
 
 

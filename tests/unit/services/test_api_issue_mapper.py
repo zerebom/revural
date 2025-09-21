@@ -12,11 +12,12 @@ def test_map_api_issue_uses_summary_if_present() -> None:
         "summary": "Provided summary",
         "comment": "comment",
         "original_text": "abc",
+        "severity": "High",
     }
     issue = map_api_issue(item, "abc")
     assert isinstance(issue, ApiIssue)
     assert issue.summary == "Provided summary"
-    assert issue.priority == 2
+    assert issue.priority == 1
 
 
 def test_map_api_issue_derives_summary_from_comment() -> None:
@@ -27,6 +28,7 @@ def test_map_api_issue_derives_summary_from_comment() -> None:
         "agent_name": "pm_specialist",
         "comment": comment,
         "original_text": "abc",
+        "severity": "low",
     }
     issue = map_api_issue(item, "abc")
     assert issue.summary.startswith("First sentence")
@@ -44,3 +46,15 @@ def test_map_api_issue_handles_missing_priority() -> None:
     assert issue.priority == 0
     assert issue.summary == "snippet"
     assert issue.span is not None
+
+
+def test_map_api_issue_falls_back_to_numeric_priority_when_severity_missing() -> None:
+    item = {
+        "issue_id": "4",
+        "priority": 5,
+        "agent_name": "qa_specialist",
+        "comment": "comment",
+        "original_text": "text",
+    }
+    issue = map_api_issue(item, "text")
+    assert issue.priority == 5
