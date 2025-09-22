@@ -30,6 +30,16 @@ def map_api_issue(item: dict[str, object], prd_text: str) -> ApiIssue:
     _comment = str(item.get("comment") or "")
     _summary = str(item.get("summary") or "").strip()
 
+    # If no summary provided, derive from comment or original_text
+    if not _summary:
+        if _comment:
+            # Extract first sentence from comment
+            first_sentence = _comment.split(".")[0]
+            _summary = first_sentence.strip()
+        else:
+            # Fallback to original_text
+            _summary = original_text
+
     priority = _coerce_priority(item.get("priority"))
 
     return ApiIssue(
