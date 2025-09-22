@@ -25,6 +25,22 @@ def test_calculate_span_handles_normalized_text() -> None:
     assert prd[span.start_index : span.end_index].replace(" ", "") == "Line2withspaces"
 
 
+def test_calculate_span_handles_nfkc_and_case() -> None:
+    prd = "ユーザー数は10万です"
+    original = "ﾕｰｻﾞｰ数は１０万です"
+    span = calculate_span(prd, original)
+    assert span is not None
+    assert prd[span.start_index : span.end_index] == "ユーザー数は10万です"
+
+
+def test_calculate_span_handles_minor_variations_via_fuzzy_match() -> None:
+    prd = "ユーザーはサインアップし、データを保存します。"
+    original = "ユーザーはサインアップしてデータを保存します"
+    span = calculate_span(prd, original)
+    assert span is not None
+    assert prd[span.start_index : span.end_index].startswith("ユーザーはサインアップ")
+
+
 def test_calculate_span_falls_back_to_simple_search() -> None:
     prd = "abc xyz"
     original = "xyz"
@@ -35,3 +51,9 @@ def test_calculate_span_falls_back_to_simple_search() -> None:
 def test_calculate_span_returns_none_for_missing_text() -> None:
     assert calculate_span("abc", "") is None
     assert calculate_span("abc", "xyz") is None
+
+
+def test_calculate_span_returns_none_when_similarity_low() -> None:
+    prd = "プロダクトの目的は売上拡大です。"
+    original = "全く関係のない文章です"
+    assert calculate_span(prd, original) is None

@@ -5,7 +5,7 @@ instruction_review = """
 出力は構造化スキーマ IssuesResponse に従い、各指摘に priority(1=High,2=Mid,3=Low), comment, original_text を含めてください。可能であれば PRD 文字列内の位置を示す span も付与してください（0始まり、半開区間 [start_index, end_index)）。
 
 【出力仕様（厳守）】
-- フォーマット: JSONのみを返す（前置き/後置き/Markdown記法なし）。
+- コードブロック記法（``` や ```json など）は絶対に使用しない。純粋な JSON を返すこと。
 - ルートキー: "issues"（配列）。
 - 要素スキーマ: {"priority":1|2|3,"comment":"…","original_text":"…","span":{"start_index":number,"end_index":number}}（span は PRD 内で original_text が最初に出現する位置。見つからない場合は省略可）
 - priority は 1 / 2 / 3 のいずれか（他の値は禁止）。
@@ -37,7 +37,7 @@ instruction_review = """
 体験上の問題や設計不備を指摘してください。初心者視点やエッジケースにも留意してください。出力は IssuesResponse に従います。可能であれば各指摘に PRD 内位置 span（0始まり、[start_index, end_index)）を含めてください。
 
 【出力仕様（厳守）】
-- JSONのみ。ルートキーは "issues"。
+- 。ルートキーは "issues"。
 - コードブロック記法（``` や ```json など）は絶対に使用しない。純粋な JSON を返すこと。
 - 要素: {"priority":1|2|3,"comment":"…","original_text":"…","span":{"start_index":number,"end_index":number}}（span は original_text の最初の出現位置。見つからなければ省略可）
 - priority は 1 / 2 / 3 のみ。
@@ -69,7 +69,7 @@ instruction_review = """
 テスト不能領域やリスクを明確に指摘してください。出力は IssuesResponse に従います。可能であれば各指摘に PRD 内位置 span（0始まり、[start_index, end_index)）を含めてください。
 
 【出力仕様（厳守）】
-- JSONのみ。ルートキーは "issues"。
+- 。ルートキーは "issues"。
 - コードブロック記法（``` や ```json など）は絶対に使用しない。純粋な JSON を返すこと。
 - 要素: {"priority":1|2|3,"comment":"…","original_text":"…","span":{"start_index":number,"end_index":number}}（span は original_text の最初の出現位置。見つからなければ省略可）
 - priority は 1 / 2 / 3 のみ。
@@ -101,7 +101,7 @@ instruction_review = """
 不整合や曖昧さを指摘してください。出力は IssuesResponse に従います。可能であれば各指摘に PRD 内位置 span（0始まり、[start_index, end_index)）を含めてください。
 
 -【出力仕様（厳守）】
-- JSONのみ。ルートキーは "issues"。
+- 。ルートキーは "issues"。
 - コードブロック記法（``` や ```json など）は絶対に使用しない。純粋な JSON を返すこと。
 - 要素: {"priority":1|2|3,"comment":"…","original_text":"…","span":{"start_index":number,"end_index":number}}（span は original_text の最初の出現位置。見つからなければ省略可）
 - priority は 1 / 2 / 3 のみ。
