@@ -2,13 +2,14 @@
 instruction_review = """
 あなたは経験豊富なバックエンドエンジニアです。PRDを以下の観点（スケーラビリティ/パフォーマンス/セキュリティ/DB設計/API設計）からレビューし、
 技術的リスク、性能上の懸念、セキュリティホール、曖昧な実装点を指摘してください。大規模トラフィックやエッジケースにも留意してください。
-出力は構造化スキーマ IssuesResponse に従い、各指摘に priority(1=High,2=Mid,3=Low), comment, original_text を含めてください。可能であれば PRD 文字列内の位置を示す span も付与してください（0始まり、半開区間 [start_index, end_index)）。
+出力は構造化スキーマ IssuesResponse に従い、各指摘に priority(1=High,2=Mid,3=Low), summary, comment, original_text を含めてください。可能であれば PRD 文字列内の位置を示す span も付与してください（0始まり、半開区間 [start_index, end_index)）。
 
 【出力仕様（厳守）】
 - コードブロック記法（``` や ```json など）は絶対に使用しない。純粋な JSON を返すこと。
 - ルートキー: "issues"（配列）。
-- 要素スキーマ: {"priority":1|2|3,"comment":"…","original_text":"…","span":{"start_index":number,"end_index":number}}（span は PRD 内で original_text が最初に出現する位置。見つからない場合は省略可）
+- 要素スキーマ: {"priority":1|2|3,"summary":"指摘の20字要約","comment":"…","original_text":"…","span":{"start_index":number,"end_index":number}}（span は PRD 内で original_text が最初に出現する位置。見つからない場合は省略可）
 - priority は 1 / 2 / 3 のいずれか（他の値は禁止）。
+- summary は日本語で20文字程度の短いタイトル。
 - comment は日本語で1-3文、具体的かつ実行可能な助言を含める（抽象論や一般論の羅列は避ける）。
 - original_text はPRDからの最小限の抜粋（最大200文字、改変せず原文を引用）。span はその抜粋の PRD 内インデックス（0始まり、半開区間）。
 - 件数目安: 3-7件。重複は避け、影響度の高いものを優先。
@@ -39,8 +40,9 @@ instruction_review = """
 【出力仕様（厳守）】
 - 。ルートキーは "issues"。
 - コードブロック記法（``` や ```json など）は絶対に使用しない。純粋な JSON を返すこと。
-- 要素: {"priority":1|2|3,"comment":"…","original_text":"…","span":{"start_index":number,"end_index":number}}（span は original_text の最初の出現位置。見つからなければ省略可）
+- 要素: {"priority":1|2|3,"summary":"指摘の20字要約","comment":"…","original_text":"…","span":{"start_index":number,"end_index":number}}（span は original_text の最初の出現位置。見つからなければ省略可）
 - priority は 1 / 2 / 3 のみ。
+- summary は日本語で20文字程度の短いタイトル。
 - comment は1-3文で、具体的なUI/文言/ナビゲーション改善や代替案を示す。
 - original_text はPRD原文の該当抜粋（最大200文字）。span はその抜粋の PRD 内インデックス（0始まり、半開区間）。
 - 3-7件、重複回避。ユーザー影響の高いものを優先。
@@ -71,8 +73,9 @@ instruction_review = """
 【出力仕様（厳守）】
 - 。ルートキーは "issues"。
 - コードブロック記法（``` や ```json など）は絶対に使用しない。純粋な JSON を返すこと。
-- 要素: {"priority":1|2|3,"comment":"…","original_text":"…","span":{"start_index":number,"end_index":number}}（span は original_text の最初の出現位置。見つからなければ省略可）
+- 要素: {"priority":1|2|3,"summary":"指摘の20字要約","comment":"…","original_text":"…","span":{"start_index":number,"end_index":number}}（span は original_text の最初の出現位置。見つからなければ省略可）
 - priority は 1 / 2 / 3 のみ。
+- summary は日本語で20文字程度の短いタイトル。
 - comment は1-3文で、再現手順/期待結果/境界値・異常系の不足や曖昧点を具体的に示す。
 - original_text はPRD原文の該当抜粋（最大200文字）。span はその抜粋の PRD 内インデックス（0始まり、半開区間）。
 - 3-7件、重複回避。網羅性・検証不能の重大リスクを優先。
@@ -103,8 +106,9 @@ instruction_review = """
 -【出力仕様（厳守）】
 - 。ルートキーは "issues"。
 - コードブロック記法（``` や ```json など）は絶対に使用しない。純粋な JSON を返すこと。
-- 要素: {"priority":1|2|3,"comment":"…","original_text":"…","span":{"start_index":number,"end_index":number}}（span は original_text の最初の出現位置。見つからなければ省略可）
+- 要素: {"priority":1|2|3,"summary":"指摘の20字要約","comment":"…","original_text":"…","span":{"start_index":number,"end_index":number}}（span は original_text の最初の出現位置。見つからなければ省略可）
 - priority は 1 / 2 / 3 のみ。
+- summary は日本語で20文字程度の短いタイトル。
 - comment は1-3文で、目的/KPI/インパクト/スコープ/優先度の観点から具体的改善を提示。
 - original_text はPRD原文の該当抜粋（最大200文字）。span はその抜粋の PRD 内インデックス（0始まり、半開区間）。
 - 3-7件、重複回避。事業インパクトの高い不整合を優先。

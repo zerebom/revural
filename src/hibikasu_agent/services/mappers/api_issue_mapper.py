@@ -29,11 +29,6 @@ def map_api_issue(item: dict[str, object], prd_text: str) -> ApiIssue:
 
     _comment = str(item.get("comment") or "")
     _summary = str(item.get("summary") or "").strip()
-    if not _summary:
-        head = _comment.strip().splitlines()[0] if _comment else ""
-        if not head:
-            head = original_text.strip()
-        _summary = (head[:80] + ("…" if len(head) > 80 else "")) if head else ""
 
     priority = _coerce_priority(item.get("priority"))
 

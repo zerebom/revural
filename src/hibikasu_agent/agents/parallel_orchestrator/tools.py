@@ -37,6 +37,7 @@ def _to_final_issues(agent_key: str, issues_resp: IssuesResponse) -> list[FinalI
                 issue_id=str(uuid4()),
                 priority=parsed.priority,
                 agent_name=AGENT_DISPLAY_NAMES.get(agent_key, agent_key),
+                summary=parsed.summary,
                 comment=parsed.comment,
                 original_text=parsed.original_text,
             )

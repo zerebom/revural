@@ -1,6 +1,7 @@
 """Parallel Orchestrator that aggregates specialist issues into FinalIssue list."""
 
 from collections.abc import AsyncGenerator
+from typing import cast
 
 from google.adk.agents import BaseAgent, LlmAgent, ParallelAgent, SequentialAgent
 from google.adk.agents.invocation_context import InvocationContext
@@ -51,6 +52,7 @@ def create_parallel_review_agent(
         model: The LLM model to use for all agents
         selected_agents: Optional list of agent roles to include. If None, all agents are used.
                         Valid roles: "engineer", "ux_designer", "qa_tester", "pm"
+                        Falls back to all agents if no valid roles are provided.
 
     Flow:
     1) Four specialist review agents run concurrently via ParallelAgent and
@@ -64,8 +66,9 @@ def create_parallel_review_agent(
         filtered_definitions = [
             definition for definition in SPECIALIST_DEFINITIONS if definition.role in selected_agents
         ]
+        # Fall back to all agents if no valid agents found
         if not filtered_definitions:
-            raise ValueError(f"No valid agents found for roles: {selected_agents}")
+            filtered_definitions = list(SPECIALIST_DEFINITIONS)
     else:
         filtered_definitions = list(SPECIALIST_DEFINITIONS)
 
@@ -78,7 +81,7 @@ def create_parallel_review_agent(
     # 2) Run all specialists concurrently; their structured outputs persist via output_key.
     specialists_parallel = ParallelAgent(
         name="ParallelSpecialists",
-        sub_agents=review_agents,
+        sub_agents=cast(list[BaseAgent], review_agents),
         description="Executes specialist reviews concurrently.",
     )
 
@@ -133,7 +136,7 @@ def create_coordinator_agent(model: str = "gemini-2.5-flash") -> LlmAgent:
             "- 企画・優先度・ステークホルダー調整・KPI → pm_chat\n"
             "曖昧な場合は短く確認の質問をしてから転送先を決定してください。\n"
         ),
-        sub_agents=chat_agents,
+        sub_agents=cast(list[BaseAgent], chat_agents),
     )
 
     return coordinator

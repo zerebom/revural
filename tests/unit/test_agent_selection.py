@@ -15,9 +15,10 @@ def test_create_parallel_review_agent_with_selected_agents() -> None:
 
 
 def test_create_parallel_review_agent_with_invalid_agents() -> None:
-    """Test that create_parallel_review_agent raises error for invalid agents."""
-    with pytest.raises(ValueError, match="No valid agents found"):
-        create_parallel_review_agent(selected_agents=["invalid_agent"])
+    """Test that create_parallel_review_agent falls back to all agents for invalid roles."""
+    agent = create_parallel_review_agent(selected_agents=["invalid_agent"])
+    assert agent is not None
+    assert agent.name == "ReviewPipelineWithTools"
 
 
 def test_create_parallel_review_agent_with_all_agents() -> None:

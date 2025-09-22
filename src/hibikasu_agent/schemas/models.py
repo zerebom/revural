@@ -46,6 +46,7 @@ class IssueItem(BaseModel):
     """Minimal issue item produced by specialists."""
 
     priority: int = Field(ge=1, le=3)
+    summary: str = Field(description="指摘内容を20文字程度で要約した短いタイトル")
     comment: str = Field(min_length=1)
     original_text: str = Field(default="")
 

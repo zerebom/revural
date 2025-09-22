@@ -80,7 +80,7 @@ class AiService(AbstractReviewService):
 
     @property
     def reviews_in_memory(self) -> dict[str, ReviewRuntimeSession]:
-        return self._store.as_dict()
+        return dict(self._store.as_dict())
 
     def new_review_session(
         self, prd_text: str, panel_type: str | None = None, *, selected_agents: list[str] | None = None

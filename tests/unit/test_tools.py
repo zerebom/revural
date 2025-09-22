@@ -26,7 +26,7 @@ def test_to_final_issues_preserves_original_text() -> None:
     """Ensure original_text is kept intact (no backend truncation)."""
 
     long_text = "a" * 200
-    issues = IssuesResponse(issues=[IssueItem(priority=1, comment="c", original_text=long_text)])
+    issues = IssuesResponse(issues=[IssueItem(priority=1, summary="短い要約", comment="c", original_text=long_text)])
 
     final_issues = _to_final_issues("engineer_specialist", issues)
 
@@ -35,7 +35,7 @@ def test_to_final_issues_preserves_original_text() -> None:
 
 
 def _make_issue_item(priority: int, comment: str) -> IssueItem:
-    return IssueItem(priority=priority, comment=comment, original_text=f"orig:{comment}")
+    return IssueItem(priority=priority, summary="短い要約", comment=comment, original_text=f"orig:{comment}")
 
 
 def test_aggregate_final_issues_orders_by_priority() -> None:
