@@ -24,6 +24,10 @@ class ReviewRequest(BaseModel):
         default=None,
         description="Panel type (optional)",
     )
+    selected_agent_roles: list[str] | None = Field(
+        default=None,
+        description="Optional list of agent roles to include in the review",
+    )
 
 
 class ReviewResponse(BaseModel):
@@ -137,3 +141,15 @@ class ReviewSummaryResponse(BaseModel):
     status: Literal["processing", "completed", "failed", "not_found"]
     statistics: SummaryStatistics
     issues: list[Issue]
+
+
+class AgentRole(BaseModel):
+    """Agent role information for selection UI."""
+
+    role: str = Field(description="Agent role identifier (e.g., 'engineer', 'pm')")
+    display_name: str = Field(description="Human-readable display name")
+    description: str = Field(description="Description of the agent's expertise")
+    role_label: str | None = Field(default=None, description="Japanese role label (e.g., 'エンジニアAI')")
+    bio: str | None = Field(default=None, description="Agent bio (~80 characters)")
+    tags: list[str] | None = Field(default=None, description="Expertise tags")
+    avatar_url: str | None = Field(default=None, description="Avatar image URL")

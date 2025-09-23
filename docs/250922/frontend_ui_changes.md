@@ -1,78 +1,51 @@
-# フロントエンド変更案（UI/フロー/型）
+# フロントエンド変更案（UI/フロー/ストア・更新）
 
 対象: Next.js App Router + Zustand（`frontend/`）
 
-## 1. 体験フロー
-1) PRD入力 → 2) 体制プリセット選択 → 3) メンバー選択（カードUI） → 4) レビュー開始 → 5) 結果画面
+本書はコード変更を含みません。UI仕様と配線方針を明確化します。
 
-- 2/3 は `PrdInputForm` と同一画面に統合（シンプル） or ステップUI（将来）。
-- まずは同一画面下部に「体制」と「メンバー」ブロックを追加する方式で実装。
+## 1. 体験フロー（同一画面MVP）
+1) PRD入力 → 2) 体制プリセット選択 → 3) メンバー選択（プロフィールカード） → 4) レビュー開始 → 5) 結果
+- 下部に「体制」「メンバー」ブロックを追加（`PrdInputForm` 内に統合）
+- アクションバーに「選択中: n名」＋「選択したn名でレビューを開始」
 
-## 2. API呼び出しの変更
-- `api.startReview(prd_text, panel_type?, selected_agent_roles?)` に拡張。
-- `frontend/lib/api.ts` の `startReview` を第3引数対応に。
+## 2. プロフィールカード方針（UIのみ）
+- 表記: 名前は日本語、bioは約80文字・1文。タグは最大3（超過は +n）
+- 構成: Avatar/イニシャル + 名前 + 選択中Badge → 1行bio → タグ（2-3）
+- 実装: 既存 shadcn/ui（`Card`, `Avatar`, `Badge`, `Tooltip`, `ScrollArea`）
 
-```ts
-// 変更案（概略）
-startReview: (prd_text: string, panel_type?: string | null, selected_agent_roles?: string[] | null) =>
-  http<ReviewStartResponse>("/reviews", {
-    method: "POST",
-    body: JSON.stringify({ prd_text, panel_type: panel_type ?? null, selected_agent_roles: selected_agent_roles ?? null }),
-  }),
-```
+## 3. API呼び出し
+- `api.startReview(prd_text, panel_type?, selected_agent_roles?)` に拡張（第3引数）
+- `api.getReview` は既存。`expectedAgents`/`completedAgents` は display_name へ変換表示
+- `GET /agents/roles`/`GET /agent-presets` を初回ロードで取得
 
-## 3. UIコンポーネント
-- `TeamPresetSelect`: プリセットカード/ラジオ（選択時に `selectedRoles` を置換）。
-- `MemberSelectGrid`: ロール一覧をカードで表示し、チェックでオン/オフ。選択数を表示。
-- `PrdInputForm`:
-  - これらを下部に組み込み、「選択した◯人でレビューを開始」ボタンに置換。
-  - `useReviewStore` から `selectedRoles` を参照・更新。
+## 4. ストア（Zustand）
+- 追加: `selectedRoles: string[]`
+- Actions: `setSelectedRoles(roles: string[])`, `toggleRole(role: string)`、既存 `setIssues`, `reset`
+- 型ファイル（`frontend/lib/types.ts`）の追加変更は不要。ロール一覧はローカル型 or 匿名型で扱う。
 
-## 4. ストア拡張（Zustand）
-- `frontend/store/useReviewStore.ts`
-  - 追加: `selectedRoles: string[]`、`setSelectedRoles(roles: string[])`、`toggleRole(role: string)`
-  - 画面離脱時 `reset()` で初期化（必要に応じてセッション持続）
+## 5. コンポーネント
+- `TeamPresetSelect`: プリセット選択＋適用ボタン（`onApply(roles)`）
+- `MemberSelectGrid`: ロール一覧カードのトグル（選択数表示・全選択/クリア任意）
+- `ProfileCard`: プロフィール中心カード（日本語名/80字bio/タグ）
+- 統合先: `PrdInputForm.tsx` に2コンポーネントを組み込み、開始ボタン文言を切替
 
-```ts
-// 追加フィールド例
-selectedRoles: [],
-setSelectedRoles: (roles) => set({ selectedRoles: roles }),
-toggleRole: (role) => set((s) => ({
-  selectedRoles: s.selectedRoles.includes(role)
-    ? s.selectedRoles.filter((r) => r !== role)
-    : [...s.selectedRoles, role],
-})),
-```
+## 6. バリデーション/UX
+- 選択0名: 開始ボタン無効＋ヘルパー表示
+- 選択上限: 4名（超過時はトースト）
+- 既知修正:
+  - `frontend/app/reviews/[id]/page.tsx` の `React.use(params)` 問題を修正
+  - 結果0件時に `issues=[]` と `expandedIssueId=null` を確実に反映
 
-## 5. データ取得
-- `GET /agents/roles` を初回マウントで取得し、カード一覧を描画。
-- `GET /agent-presets` を読み込んでプリセットの表示/反映。
-- プリセット選択時は `setSelectedRoles(preset.roles)` で反映。
+## 7. ローディング/空状態/エラー
+- 役割/プリセット取得: スケルトン → エラー時は再試行
+- レビュー実行中: `LoadingSpinner` に display_name を表示
+- 空結果時: ステート初期化（`expandedIssueId=null`）
 
-## 6. 型の拡張（`frontend/lib/types.ts`）
-```ts
-export interface AgentRoleInfo {
-  role: string;
-  display_name: string;
-  description: string;
-}
+## 8. テスト
+- API呼び出し: `startReview` に `selected_agent_roles` が渡る
+- UI相互作用: プリセット適用→トグル→開始の操作が意図通り
+- 0名/上限超過/空結果/エラーの各分岐表示
 
-export interface ReviewStartRequest {
-  prd_text: string;
-  panel_type?: string | null;
-  selected_agent_roles?: string[] | null; // 追加
-}
-```
-
-## 7. ローディング/結果画面
-- 既存 `LoadingSpinner` の `expectedAgents` は agent_key を表示中。UI側で display_name 変換テーブルを持ち、わかりやすい名称で表示。
-- 完了後 `issues` は現行通り。ただし 0 件時のリセット/初期化（`expandedIssueId=null`）を確実にする修正を同時実施。
-
-## 8. バリデーション/UX
-- 選択人数が 1〜6 程度に収まるよう UIでガイド（3〜4人を推奨表示）。
-- 未選択時は開始ボタンを無効化し、ヘルパーテキスト表示。
-
-## 9. テスト
-- `TeamPresetSelect`/`MemberSelectGrid` の相互作用テスト。
-- `startReview` 実行時に `selected_agent_roles` が送られることのモックテスト。
-- リロード時に選択が正しく初期化/復元（必要に応じて URL パラメータやローカルストレージ）。
+## 9. ロールアウト
+- フィーチャーフラグで新UIを段階露出。既存体験と併存可能
