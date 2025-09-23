@@ -1,82 +1,83 @@
-# バックエンド変更案（API/モデル）
+# バックエンド変更案（API/モデル・更新）
 
 対象: FastAPI（`src/hibikasu_agent/api/routers/reviews.py` 他）
 
-## 1. レビュー開始API: 選択ロールの受け取り
-- 変更: `POST /reviews` のリクエストに `selected_agent_roles?: string[]` を追加。
+本書はコード変更を含みません。API契約とバリデーション方針のみ更新し、既存実装の延長で成立させます。
+
+## 1. レビュー開始API: 選択ロールの受け取り（非破壊拡張）
+- 変更: `POST /reviews` のリクエストに `selected_agent_roles?: string[]` を追加（未指定は従来4名）。
 - 受領後、`AiService.new_review_session(..., selected_agents=selected_agent_roles)` に引き渡し。
 
-### 変更イメージ（スキーマ）
-```python
-# src/hibikasu_agent/api/schemas/reviews.py
-class ReviewRequest(BaseModel):
-    prd_text: str
-    panel_type: str | None = None
-    selected_agent_roles: list[str] | None = None  # 追加
+### リクエスト/レスポンス例
+```json
+// POST /reviews (Request)
+{
+  "prd_text": "...",
+  "panel_type": null,
+  "selected_agent_roles": ["engineer", "pm"]
+}
 ```
 
-```python
-# src/hibikasu_agent/api/routers/reviews.py
-@router.post("/reviews", response_model=ReviewResponse)
-async def start_review(req: ReviewRequest, background_tasks: BackgroundTasks, service: AbstractReviewService = Depends(get_review_service)) -> ReviewResponse:
-    review_id = service.new_review_session(
-        req.prd_text,
-        req.panel_type,
-        selected_agents=req.selected_agent_roles,
-    )
-    background_tasks.add_task(service.kickoff_review, review_id=review_id)
-    return ReviewResponse(review_id=review_id)
+```json
+// POST /reviews (Response)
+{ "review_id": "7f2b9b6e-..." }
 ```
 
-- 実行経路は既存で対応済み:
-  - `AiService.new_review_session(..., selected_agents=...)` → `ReviewRuntimeSession.selected_agent_roles` に保存。
-  - `AiService.kickoff_review` 内で `self._review_runner.run_blocking(..., selected_agents=sess.selected_agent_roles)`。
-  - `AdkReviewRunner` → `ADKService.run_review_async(..., selected_agents=...)`。
-  - `create_parallel_review_agent(selected_agents=...)` で定義フィルタリング済み。
+## 2. ステータス取得API（既存）
+- `GET /reviews/{review_id}` で進捗と担当者を返す。
+- `expected_agents` / `completed_agents` は agent_key ベース（UIで表示名へ変換）。
 
-## 2. 利用可能ロールの取得API
+```json
+// 例: GET /reviews/{id}
+{
+  "status": "processing",
+  "issues": null,
+  "prd_text": "...",
+  "progress": 0.35,
+  "phase": "parallel_specialists",
+  "phase_message": "2名の専門家がレビュー中",
+  "eta_seconds": 24,
+  "expected_agents": ["engineer_specialist", "pm_specialist"],
+  "completed_agents": ["engineer_specialist"]
+}
+```
+
+## 3. 役割/プリセット取得API（新設）
 - 追加: `GET /agents/roles`
-- 返却: `[{ role: string, display_name: string, description: string }]`
-- 実装元: `hibikasu_agent.constants.agents.SPECIALIST_DEFINITIONS` から生成。
-
-```python
-# 返却例
-[
-  {"role": "engineer", "display_name": "Engineer Specialist", "description": "バックエンドエンジニアの専門的観点からPRDをレビュー"},
-  {"role": "ux_designer", ...},
-  ...
-]
-```
-
-## 3. 体制プリセット取得API（任意だが推奨）
-- 追加: `GET /agent-presets`
-- 返却: `[{ key: string, name: string, roles: string[] }]`
-- 実装方法: サーバー側の定数 or 設定ファイル（将来はDB）で定義。
+  - 返却: `[{ role: string, display_name: string, description: string }]`
+  - 実装元: `hibikasu_agent.constants.agents.SPECIALIST_DEFINITIONS`
 
 ```json
 [
-  {"key": "prd_review", "name": "PRDレビュー", "roles": ["engineer", "ux_designer", "qa_tester", "pm"]},
-  {"key": "legal_check", "name": "法務チェック", "roles": ["legal", "security", "pm"]},
-  {"key": "blog_check", "name": "ブログチェック", "roles": ["copywriter", "marketing", "ux_designer"]}
+  {"role": "engineer", "display_name": "Engineer Specialist", "description": "バックエンドエンジニアの専門的観点からPRDをレビュー"},
+  {"role": "ux_designer", "display_name": "UX Designer Specialist", "description": "UXデザイナーの専門的観点からPRDをレビュー"},
+  {"role": "qa_tester", "display_name": "QA Tester Specialist", "description": "QAテスターの専門的観点からPRDをレビュー"},
+  {"role": "pm", "display_name": "PM Specialist", "description": "プロダクトマネージャーの専門的観点からPRDをレビュー"}
 ]
 ```
 
-※ 現状のロールセットは 4 名に限定されるため、まずは既存ロールのみで返し、将来の追加に備えてAPI設計だけ先に用意。
+- 任意: `GET /agent-presets`
+```json
+[
+  {"key": "prd_review", "name": "PRDレビュー", "roles": ["engineer", "ux_designer", "qa_tester", "pm"]}
+]
+```
 
-## 4. ステータスAPIの表示名サポート（任意）
-- 既存の `StatusResponse.expected_agents` は agent_key ベース。フロントで `AGENT_DISPLAY_NAMES` による変換で十分。
-- ただしUX向上のため、`expected_agent_display_names?: string[]` を追加する案もあり（互換維持）。
+## 4. サーバー側バリデーション/フォールバック
+- `selected_agent_roles` 未指定 → 既定4ロール（従来挙動）
+- 不正ロールが含まれる → 無視。1件以上の有効ロールがあれば採用、0件なら既定4ロールへフォールバック
+- 上限超過（>4） → 先頭4件を採用（400/403は返さない）
+- ログ出力に `selected_agent_roles` を含める（任意）
 
-## 5. 型/モデルの差分
-- `ReviewRequest` に `selected_agent_roles` を追加。
-- 既存 `ReviewRuntimeSession` は `selected_agent_roles` を保持済み（変更不要）。
+## 5. 表示名/プロフィールに関する扱い
+- `expected_agents` は agent_key で返却。表示名への変換はUIで実施（`AGENT_DISPLAY_NAMES` 等）。
+- 名前（日本語）/短いbio（約80字）/タグ（最大3）はUI用メタデータであり、当面はAPI契約に含めない（将来 `GET /agents/profiles` での拡張余地あり）。
 
-## 6. テスト観点
-- `tests/api/test_reviews_endpoints.py` に以下を追加:
-  - `POST /reviews` に `selected_agent_roles` を含めても 200/正常開始となる。
-  - ポーリング完了後、`expected_agents` が選択内容（に対応する `agent_key`）に絞られていること。
-- `tests/unit/test_agent_selection.py` は既に `create_parallel_review_agent(selected_agents=...)` の動作を網羅。
+## 6. テスト観点（サーバー）
+- `POST /reviews` に選択ロールを付与しても 200/正常開始。
+- ポーリング完了後、`expected_agents` が選択内容（に対応する `agent_key`）に絞られる。
+- 不正ロール混在時のフォールバック、上限制御の確認。
 
-## 7. 移行/後方互換
-- `selected_agent_roles` 未指定時は従来通り全員（4名）実行。
-- 新APIの追加は非破壊的。フロントから段階的に移行可能。
+## 7. 移行/後方互換・ロールアウト
+- 後方互換: `selected_agent_roles` 未指定でも従来通り動作。
+- UI側はフィーチャーフラグ下で段階露出可能。既存の固定4名体験と併存。
