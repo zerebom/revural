@@ -31,7 +31,7 @@ async def start_review(
     service: AbstractReviewService = Depends(get_review_service),
 ) -> ReviewResponse:
     # 1) セッションだけ先に作成（同期）
-    review_id = service.new_review_session(req.prd_text, req.panel_type)
+    review_id = service.new_review_session(req.prd_text, req.panel_type, selected_agents=req.selected_agent_roles)
     # 2) 重い計算はバックグラウンドへ（同期ラッパーを登録）
     background_tasks.add_task(service.kickoff_review, review_id=review_id)
     logger.info(

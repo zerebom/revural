@@ -26,7 +26,9 @@ class MockService(AbstractReviewService):
     def reviews_in_memory(self) -> dict[str, ReviewRuntimeSession]:
         return self._store
 
-    def new_review_session(self, prd_text: str, panel_type: str | None = None) -> str:
+    def new_review_session(
+        self, prd_text: str, panel_type: str | None = None, *, selected_agents: list[str] | None = None
+    ) -> str:
         review_id = str(uuid.uuid4())
         self._store[review_id] = ReviewRuntimeSession(
             created_at=time.time(),
@@ -34,6 +36,7 @@ class MockService(AbstractReviewService):
             issues=None,
             prd_text=prd_text,
             panel_type=panel_type,
+            selected_agent_roles=selected_agents,  # Store selected agents in session
         )
         return review_id
 

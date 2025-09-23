@@ -16,7 +16,9 @@ class AbstractReviewService(ABC):
     # start_review_process は撤廃。ルーターからは new_review_session + kickoff_review を使用する。
 
     @abstractmethod
-    def new_review_session(self, prd_text: str, panel_type: str | None = None) -> str:
+    def new_review_session(
+        self, prd_text: str, panel_type: str | None = None, *, selected_agents: list[str] | None = None
+    ) -> str:
         """Create a new review session and return its ID."""
         ...
 
