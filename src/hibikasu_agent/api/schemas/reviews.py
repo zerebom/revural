@@ -24,6 +24,10 @@ class ReviewRequest(BaseModel):
         default=None,
         description="Panel type (optional)",
     )
+    selected_agent_roles: list[str] | None = Field(
+        default=None,
+        description="Optional list of agent roles to include in the review",
+    )
 
 
 class ReviewResponse(BaseModel):
