@@ -9,13 +9,23 @@ from typing import Final
 
 @dataclass(frozen=True)
 class SpecialistDefinition:
-    """Static configuration describing a specialist agent."""
+    """Static configuration describing a specialist agent.
 
+    Single Source of Truth for all agent information including UI metadata.
+    """
+
+    # Core agent configuration
     role: str
     agent_key: str
     state_key: str
     display_name: str
     review_description: str
+
+    # UI enhancement fields (for rich profile display)
+    role_label: str | None = None
+    bio: str | None = None
+    tags: list[str] | None = None
+    avatar_url: str | None = None
 
 
 ENGINEER_AGENT_KEY: Final[str] = "engineer_specialist"
@@ -35,6 +45,9 @@ SPECIALIST_DEFINITIONS: tuple[SpecialistDefinition, ...] = (
         state_key=ENGINEER_ISSUES_STATE_KEY,
         display_name="Engineer Specialist",
         review_description="バックエンドエンジニアの専門的観点からPRDをレビュー",
+        role_label="エンジニアAI",
+        bio="バックエンド設計とAPIの専門家として、スケーラブルなシステム構築を支援します。",
+        tags=["#API設計", "#スケーラビリティ", "#パフォーマンス"],
     ),
     SpecialistDefinition(
         role="ux_designer",
@@ -42,6 +55,9 @@ SPECIALIST_DEFINITIONS: tuple[SpecialistDefinition, ...] = (
         state_key=UX_ISSUES_STATE_KEY,
         display_name="UX Designer Specialist",
         review_description="UXデザイナーの専門的観点からPRDをレビュー",
+        role_label="UXデザイナーAI",
+        bio="ユーザー中心設計の観点から、直感的で使いやすいインターフェースを提案します。",
+        tags=["#UX設計", "#ユーザビリティ", "#アクセシビリティ"],
     ),
     SpecialistDefinition(
         role="qa_tester",
@@ -49,6 +65,9 @@ SPECIALIST_DEFINITIONS: tuple[SpecialistDefinition, ...] = (
         state_key=QA_ISSUES_STATE_KEY,
         display_name="QA Tester Specialist",
         review_description="QAテスターの専門的観点からPRDをレビュー",
+        role_label="QAテスターAI",
+        bio="品質保証の専門家として、バグ予防とテスト戦略の観点から課題を発見します。",
+        tags=["#品質管理", "#テスト戦略", "#バグ予防"],
     ),
     SpecialistDefinition(
         role="pm",
@@ -56,6 +75,9 @@ SPECIALIST_DEFINITIONS: tuple[SpecialistDefinition, ...] = (
         state_key=PM_ISSUES_STATE_KEY,
         display_name="PM Specialist",
         review_description="プロダクトマネージャーの専門的観点からPRDをレビュー",
+        role_label="プロダクトマネージャーAI",
+        bio="ビジネス価値とユーザー価値のバランスを重視し、戦略的な製品判断を支援します。",
+        tags=["#プロダクト戦略", "#要件定義", "#ビジネス価値"],
     ),
 )
 

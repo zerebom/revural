@@ -6,6 +6,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
 from hibikasu_agent.api.dependencies import get_review_service
 from hibikasu_agent.api.schemas.reviews import (
+    AgentRole,
     ApplySuggestionResponse,
     DialogRequest,
     DialogResponse,
@@ -17,6 +18,7 @@ from hibikasu_agent.api.schemas.reviews import (
     UpdateStatusRequest,
     UpdateStatusResponse,
 )
+from hibikasu_agent.constants.agents import SPECIALIST_DEFINITIONS
 from hibikasu_agent.services.base import AbstractReviewService
 from hibikasu_agent.utils.logging_config import get_logger
 
@@ -119,3 +121,24 @@ async def get_review_summary(
 ) -> ReviewSummaryResponse:
     data = service.get_review_summary(review_id)
     return ReviewSummaryResponse.model_validate(data)
+
+
+@router.get("/agents/roles", response_model=list[AgentRole])
+async def get_agent_roles() -> list[AgentRole]:
+    """Get available agent roles for review selection.
+
+    Returns enriched agent information from SpecialistDefinition (Single Source of Truth).
+    """
+
+    return [
+        AgentRole(
+            role=definition.role,
+            display_name=definition.display_name,
+            description=definition.review_description,
+            role_label=definition.role_label,
+            bio=definition.bio,
+            tags=definition.tags,
+            avatar_url=definition.avatar_url,
+        )
+        for definition in SPECIALIST_DEFINITIONS
+    ]
