@@ -48,6 +48,7 @@ SPECIALIST_DEFINITIONS: tuple[SpecialistDefinition, ...] = (
         role_label="エンジニアAI",
         bio="バックエンド設計とAPIの専門家として、スケーラブルなシステム構築を支援します。",
         tags=["#API設計", "#スケーラビリティ", "#パフォーマンス"],
+        avatar_url="/avatars/engineer.png",
     ),
     SpecialistDefinition(
         role="ux_designer",
@@ -58,6 +59,7 @@ SPECIALIST_DEFINITIONS: tuple[SpecialistDefinition, ...] = (
         role_label="UXデザイナーAI",
         bio="ユーザー中心設計の観点から、直感的で使いやすいインターフェースを提案します。",
         tags=["#UX設計", "#ユーザビリティ", "#アクセシビリティ"],
+        avatar_url="/avatars/ux_designer.png",
     ),
     SpecialistDefinition(
         role="qa_tester",
@@ -68,6 +70,7 @@ SPECIALIST_DEFINITIONS: tuple[SpecialistDefinition, ...] = (
         role_label="QAテスターAI",
         bio="品質保証の専門家として、バグ予防とテスト戦略の観点から課題を発見します。",
         tags=["#品質管理", "#テスト戦略", "#バグ予防"],
+        avatar_url="/avatars/qa_tester.png",
     ),
     SpecialistDefinition(
         role="pm",
@@ -78,6 +81,7 @@ SPECIALIST_DEFINITIONS: tuple[SpecialistDefinition, ...] = (
         role_label="プロダクトマネージャーAI",
         bio="ビジネス価値とユーザー価値のバランスを重視し、戦略的な製品判断を支援します。",
         tags=["#プロダクト戦略", "#要件定義", "#ビジネス価値"],
+        avatar_url="/avatars/pm.png",
     ),
 )
 

@@ -27,37 +27,27 @@ export function TeamPresetSelect({
 
   return (
     <div className={className}>
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex-1">
-          <Select value={value ?? undefined} onValueChange={onChange}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="体制プリセットを選択" />
-            </SelectTrigger>
-            <SelectContent>
-              {presets.map((p) => (
-                <SelectItem key={p.key} value={p.key}>
-                  {p.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <Button
-          type="button"
-          variant="secondary"
-          disabled={!selected}
-          onClick={() => {
-            if (selected) onApply(selected.roles);
-          }}
-        >
-          プリセットを適用
-        </Button>
+      <div className="space-y-2">
+        <Select value={value ?? undefined} onValueChange={onChange}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="体制プリセットを選択" />
+          </SelectTrigger>
+          <SelectContent position="popper" className="z-50 bg-white shadow-lg border">
+            {presets.map((p) => (
+              <SelectItem key={p.key} value={p.key}>
+                {p.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {selected && (
+          <div className="bg-blue-50 border border-blue-200 rounded-md px-3 py-2">
+            <p className="text-xs text-blue-700">
+              適用メンバー: {selected.roles.join(", ")}
+            </p>
+          </div>
+        )}
       </div>
-      {selected && (
-        <p className="text-xs text-muted-foreground mt-2">
-          適用メンバー: {selected.roles.join(", ")}
-        </p>
-      )}
     </div>
   );
 }

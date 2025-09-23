@@ -1,4 +1,4 @@
-import { ReviewStatusResponse, ReviewStartResponse, ReviewSummaryResponse } from "./types";
+import { ReviewStatusResponse, ReviewStartResponse, ReviewSummaryResponse, AgentRole } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
@@ -19,10 +19,17 @@ async function http<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  startReview: (prd_text: string, panel_type?: string | null) =>
+  getAgentRoles: () =>
+    http<AgentRole[]>("/agents/roles"),
+
+  startReview: (prd_text: string, panel_type?: string | null, selected_agent_roles?: string[]) =>
     http<ReviewStartResponse>("/reviews", {
       method: "POST",
-      body: JSON.stringify({ prd_text, panel_type: panel_type ?? null }),
+      body: JSON.stringify({
+        prd_text,
+        panel_type: panel_type ?? null,
+        selected_agent_roles: selected_agent_roles ?? null,
+      }),
     }),
 
   getReview: (review_id: string) => http<ReviewStatusResponse>(`/reviews/${review_id}`),
