@@ -57,3 +57,13 @@ export interface ReviewSummaryResponse {
   statistics: SummaryStatistics;
   issues: Issue[];
 }
+
+export interface AgentRole {
+  role: string;                    // "engineer", "pm", etc.
+  display_name: string;            // "Engineer Specialist"
+  description: string;             // "バックエンドエンジニアの専門的観点から..."
+  role_label: string | null;       // "エンジニアAI"
+  bio: string | null;              // "バックエンド設計とAPIの専門家として..."
+  tags: string[] | null;           // ["#API設計", "#スケーラビリティ"]
+  avatar_url: string | null;       // "/avatars/engineer.png"
+}
