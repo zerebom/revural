@@ -62,7 +62,7 @@ function ProfileCard({
         {/* Text Content */}
         <div className="flex flex-col gap-2">
           <div className="text-lg font-semibold leading-tight text-gray-900 text-center">
-            {agent.display_name}
+            {agent.personal_name || agent.display_name}
           </div>
 
           {agent.role_label && (

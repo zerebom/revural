@@ -2,23 +2,28 @@ import type { TeamPreset } from "@/components/team/TeamPresetSelect";
 
 export const TEAM_PRESETS: TeamPreset[] = [
   {
-    key: "prd_review",
-    name: "PRDレビュー",
-    roles: ["engineer", "ux_designer", "pm"],
+    key: "prd_document",
+    name: "📋 PRD（プロダクト要求仕様書）",
+    roles: ["pm", "engineer", "ux_designer", "data_scientist"],
   },
   {
-    key: "technical_review",
-    name: "技術レビュー",
-    roles: ["engineer", "qa_tester"],
+    key: "technical_spec",
+    name: "🔧 技術仕様書・設計書",
+    roles: ["engineer", "security_specialist", "qa_tester", "data_scientist"],
   },
   {
-    key: "design_review",
-    name: "デザインレビュー",
-    roles: ["ux_designer", "pm"],
+    key: "ui_ux_spec",
+    name: "🎨 UI/UX仕様書・デザインガイド",
+    roles: ["ux_designer", "ux_writer", "pm", "marketing_strategist"],
   },
   {
-    key: "full_team",
-    name: "フルチーム",
-    roles: ["engineer", "ux_designer", "qa_tester", "pm"],
+    key: "business_plan",
+    name: "💼 事業計画書・ビジネス要件",
+    roles: ["pm", "marketing_strategist", "data_scientist", "legal_advisor"],
+  },
+  {
+    key: "compliance_doc",
+    name: "⚖️ 法務・コンプライアンス文書",
+    roles: ["legal_advisor", "security_specialist", "pm", "data_scientist"],
   },
 ];

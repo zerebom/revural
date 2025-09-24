@@ -153,3 +153,4 @@ class AgentRole(BaseModel):
     bio: str | None = Field(default=None, description="Agent bio (~80 characters)")
     tags: list[str] | None = Field(default=None, description="Expertise tags")
     avatar_url: str | None = Field(default=None, description="Avatar image URL")
+    personal_name: str | None = Field(default=None, description="Personal name (e.g., '佐藤 彰')")
