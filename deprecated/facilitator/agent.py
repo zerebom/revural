@@ -36,7 +36,7 @@ project_settings = ProjectSettings(
 # Create the facilitator agent instance
 facilitator_agent = FacilitatorAgent(
     project_settings=project_settings,
-    model="gemini-2.5-flash",
+    model="gemini-2.5-flash-lite",
     max_turns=3,
 )
 

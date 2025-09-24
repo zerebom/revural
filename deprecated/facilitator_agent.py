@@ -7,7 +7,7 @@ from hibikasu_agent.utils.logging_config import get_logger
 logger = get_logger(__name__)
 
 
-def create_persona_llm_agent(persona: Persona, model: str = "gemini-2.5-flash") -> LlmAgent:
+def create_persona_llm_agent(persona: Persona, model: str = "gemini-2.5-flash-lite") -> LlmAgent:
     """Create an LlmAgent for a persona that returns control to root agent.
 
     Args:
@@ -60,7 +60,7 @@ class FacilitatorAgent:
     def __init__(
         self,
         project_settings: ProjectSettings,
-        model: str = "gemini-2.5-flash",
+        model: str = "gemini-2.5-flash-lite",
         max_turns: int = 5,
     ):
         """Initialize the Facilitator Agent.
