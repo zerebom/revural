@@ -42,7 +42,7 @@ def load_agent_prompts(prompts_path: Path) -> dict:
     return toml.load(prompts_path)
 
 
-def create_agent_by_name(agent_name: str, model: str = "gemini-2.5-flash"):
+def create_agent_by_name(agent_name: str, model: str = "gemini-2.5-flash-lite"):
     """Create specialist agent by name."""
     agent_creators = {
         "engineer": create_engineer_agent,
@@ -83,7 +83,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--model",
         type=str,
-        default="gemini-2.5-flash",
+        default="gemini-2.5-flash-lite",
         help="LLM model to use",
     )
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
