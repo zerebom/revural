@@ -29,6 +29,7 @@ export default function PrdInputForm() {
   const toggleRole = useReviewStore((s) => s.toggleRole);
   const setSelectedRoles = useReviewStore((s) => s.setSelectedRoles);
   const setSelectedPreset = useReviewStore((s) => s.setSelectedPreset);
+  const setStoreAgents = useReviewStore((s) => s.setAgents);
 
   // Fetch agent roles on component mount
   useEffect(() => {
@@ -37,6 +38,7 @@ export default function PrdInputForm() {
         setLoading(true);
         const agentData = await api.getAgentRoles();
         setAgents(agentData);
+        setStoreAgents(agentData); // Store agent info globally
       } catch (e) {
         setError(toErrorMessage(e, "エージェント情報の取得に失敗しました"));
       } finally {
@@ -45,7 +47,7 @@ export default function PrdInputForm() {
     };
 
     fetchAgents();
-  }, []);
+  }, [setStoreAgents]);
 
   // プリセット選択時の自動適用処理
   const handlePresetChange = (presetKey: string) => {
@@ -95,12 +97,12 @@ export default function PrdInputForm() {
       {/* PRD Text Input */}
       <div>
         <label htmlFor="prdText" className="block text-sm font-medium text-gray-700 mb-2">
-          製品要求仕様書（PRD）
+          レビュー対象のドキュメント
         </label>
         <textarea
           {...register("prdText", { required: true })}
           rows={10}
-          placeholder="レビュー対象の製品要求仕様書（PRD）をこちらに貼り付けてください。"
+          placeholder="仕様書・企画書・要件定義など、レビュー対象のドキュメントを入力してください。"
           className="w-full rounded border border-gray-300 p-3 outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
