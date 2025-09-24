@@ -11,9 +11,9 @@ const notoSansJp = Noto_Sans_JP({
 });
 
 export const metadata: Metadata = {
-  title: "SpecCheck",
+  title: "RevuRal",
   description:
-    "開発、UX、QA、ビジネスの専門的な視点から仕様をレビューし、潜在的なリスクや曖昧な点を明確にすることで、開発の手戻りを防ぎます。",
+    "開発、UX、QA、ビジネスなど多様な視点からドキュメントをレビューし、潜在的なリスクや不明点を明確化。手戻りや認識の齟齬を防ぎます。",
 };
 
 export default function RootLayout({

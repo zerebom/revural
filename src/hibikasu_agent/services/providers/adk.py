@@ -17,6 +17,7 @@ from hibikasu_agent.agents.parallel_orchestrator.agent import (
     create_parallel_review_agent,
 )
 from hibikasu_agent.api.schemas.reviews import Issue as ApiIssue
+from hibikasu_agent.constants.agents import ROLE_TO_DEFINITION, SPECIALIST_DEFINITIONS
 from hibikasu_agent.services.mappers.api_issue_mapper import map_api_issue
 from hibikasu_agent.services.providers.adk_session_factory import (
     AdkSessionContext,
@@ -57,13 +58,11 @@ class ADKService:
     @property
     def available_agent_roles(self) -> list[str]:
         """Returns available agent roles that can be selected for reviews."""
-        from hibikasu_agent.constants.agents import SPECIALIST_DEFINITIONS
 
         return [definition.role for definition in SPECIALIST_DEFINITIONS]
 
     def get_selected_agent_keys(self, selected_roles: list[str] | None = None) -> list[str]:
         """Convert role names to agent keys, filtering available specialists."""
-        from hibikasu_agent.constants.agents import ROLE_TO_DEFINITION
 
         if selected_roles is None:
             return self.default_review_agents
@@ -91,12 +90,16 @@ class ADKService:
             selected_agents: 使用するエージェントのロール一覧（例: ["engineer", "pm"]）
         """
         try:
-            model_name = os.getenv("ADK_MODEL") or "gemini-2.5-flash-lite"
+            model_name = os.getenv("ADK_MODEL") or "gemini-2.5-flash"
             agent = create_parallel_review_agent(model=model_name, selected_agents=selected_agents)
 
             session_ctx: AdkSessionContext = await self._session_factory.create_session(agent)
 
             content = genai_types.Content(role="user", parts=[genai_types.Part(text=str(prd_text))])
+
+            # ログ出力：送信されるプロンプト
+            logger.info(f"Sending PRD to ADK - length: {len(prd_text)}, agents: {selected_agents}, model: {model_name}")
+            logger.info(f"PRD first 500 chars: {prd_text[:500]}")
 
             _t0 = time.perf_counter()
             async for event in session_ctx.runner.run_async(
@@ -127,13 +130,7 @@ class ADKService:
             # Expect a typed FinalIssuesResponse object and access directly
 
             logger.info(
-                "ADK review run done",
-                extra={
-                    "final_issues": len(final_issues),
-                    "state_keys": list(state.keys()) if isinstance(state, dict) else None,
-                    "elapsed_ms": _elapsed_ms,
-                    "selected_agents": selected_agents,
-                },
+                f"ADK review done - issues: {len(final_issues)}, elapsed: {_elapsed_ms}ms, agents: {selected_agents}"
             )
 
             # No local aggregation fallback: rely on orchestrator outputs

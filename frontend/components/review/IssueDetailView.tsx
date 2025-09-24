@@ -9,7 +9,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { PromptInput, PromptInputBody, PromptInputTextarea, PromptInputToolbar, PromptInputSubmit } from "@/components/ai-elements/prompt-input";
 import { Streamdown } from "streamdown";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toErrorMessage } from "@/lib/errors";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -109,7 +109,7 @@ export default function IssueDetailView({ reviewId, issue }: { reviewId: string;
             <TabsTrigger value="suggestion">修正案</TabsTrigger>
           </TabsList>
           <TabsContent value="chat" className="flex-1 min-h-0 mt-4 rounded-lg bg-white p-4">
-            <ChatPane reviewId={reviewId} issueId={issue.issue_id} initialMessage={issue.comment} />
+            <ChatPane reviewId={reviewId} issueId={issue.issue_id} initialMessage={issue.comment} issue={issue} />
           </TabsContent>
           <TabsContent value="suggestion" className="flex-1 min-h-0 mt-4 rounded-lg bg-white p-4">
             <SuggestionBox reviewId={reviewId} issueId={issue.issue_id} />
@@ -124,10 +124,12 @@ function ChatPane({
   reviewId,
   issueId,
   initialMessage,
+  issue,
 }: {
   reviewId: string;
   issueId: string;
   initialMessage?: string;
+  issue: Issue;
 }) {
   const [history, setHistory] = useState<{ role: "user" | "ai"; text: string }[]>(
     initialMessage ? [{ role: "ai", text: initialMessage }] : []
@@ -168,7 +170,7 @@ function ChatPane({
         <StickToBottom.Content className="space-y-3 typ-body">
           {history.length === 0 && <p className="typ-body text-gray-500">この指摘についてAIに質問できます。</p>}
           {history.map((m, idx) => (
-            <MessageBubble key={idx} role={m.role}>
+            <MessageBubble key={idx} role={m.role} issue={m.role === "ai" ? issue : undefined}>
               <Streamdown className="prose prose-sm max-w-none [&_p]:m-0 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5 [&_code]:text-[85%]">
                 {m.text}
               </Streamdown>
@@ -203,13 +205,21 @@ function ChatPane({
   );
 }
 
-function MessageBubble({ role, children }: { role: "user" | "ai"; children: React.ReactNode }) {
+function MessageBubble({ role, children, issue }: { role: "user" | "ai"; children: React.ReactNode; issue?: Issue }) {
   const isUser = role === "user";
+  const getAgentByName = useReviewStore((s) => s.getAgentByName);
+
+  // Get agent info for AI messages
+  const agent = !isUser && issue ? getAgentByName(issue.agent_name) : null;
+
   return (
     <div className={`flex items-start gap-2 ${isUser ? "flex-row-reverse" : ""}`}>
       <Avatar className="h-7 w-7 select-none">
+        {!isUser && agent?.avatar_url ? (
+          <AvatarImage src={agent.avatar_url} alt={agent.display_name} />
+        ) : null}
         <AvatarFallback className={isUser ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-700"}>
-          {isUser ? "U" : "AI"}
+          {isUser ? "U" : agent?.personal_name?.charAt(0) || "AI"}
         </AvatarFallback>
       </Avatar>
       <div

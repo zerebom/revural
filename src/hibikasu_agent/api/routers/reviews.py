@@ -139,6 +139,7 @@ async def get_agent_roles() -> list[AgentRole]:
             bio=definition.bio,
             tags=definition.tags,
             avatar_url=definition.avatar_url,
+            personal_name=definition.personal_name,
         )
         for definition in SPECIALIST_DEFINITIONS
     ]

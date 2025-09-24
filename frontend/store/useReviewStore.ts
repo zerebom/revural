@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Issue } from "@/lib/types";
+import type { Issue, AgentRole } from "@/lib/types";
 
 interface ReviewState {
   reviewId: string | null;
@@ -7,6 +7,9 @@ interface ReviewState {
   issues: Issue[];
   expandedIssueId: string | null;
   viewMode: 'list' | 'detail';
+
+  // Agent information
+  agents: AgentRole[];
 
   // Agent selection state
   selectedRoles: string[];
@@ -19,6 +22,10 @@ interface ReviewState {
   setViewMode: (mode: 'list' | 'detail') => void;
   updateIssueStatus: (issueId: string, status: string) => void;
 
+  // Agent methods
+  setAgents: (agents: AgentRole[]) => void;
+  getAgentByName: (agentName: string) => AgentRole | undefined;
+
   // Agent selection methods
   setSelectedRoles: (roles: string[]) => void;
   toggleRole: (role: string) => void;
@@ -27,12 +34,15 @@ interface ReviewState {
   reset: () => void;
 }
 
-export const useReviewStore = create<ReviewState>((set) => ({
+export const useReviewStore = create<ReviewState>((set, get) => ({
   reviewId: null,
   prdText: "",
   issues: [],
   expandedIssueId: null,
   viewMode: 'list',
+
+  // Agent information initial state
+  agents: [],
 
   // Agent selection initial state
   selectedRoles: [],
@@ -47,6 +57,25 @@ export const useReviewStore = create<ReviewState>((set) => ({
     set((state) => ({
       issues: state.issues.map((i) => (i.issue_id === issueId ? { ...i, status } : i)),
     })),
+
+  // Agent methods
+  setAgents: (agents) => set({ agents }),
+  getAgentByName: (agentName) => {
+    const state = get();
+    // Try matching by display name first (e.g., "Engineer Specialist")
+    const byDisplayName = state.agents.find(a => a.display_name === agentName);
+    if (byDisplayName) return byDisplayName;
+
+    // Fallback: try matching by role (e.g., "engineer")
+    const byRole = state.agents.find(a => a.role === agentName.toLowerCase());
+    if (byRole) return byRole;
+
+    // Fallback: partial matching
+    return state.agents.find(a =>
+      a.display_name.toLowerCase().includes(agentName.toLowerCase()) ||
+      agentName.toLowerCase().includes(a.role)
+    );
+  },
 
   // Agent selection methods
   setSelectedRoles: (roles) => set({ selectedRoles: roles }),
@@ -64,6 +93,7 @@ export const useReviewStore = create<ReviewState>((set) => ({
     issues: [],
     expandedIssueId: null,
     viewMode: 'list',
+    agents: [],
     selectedRoles: [],
     selectedPreset: null,
   }),

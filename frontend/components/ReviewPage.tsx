@@ -71,7 +71,7 @@ export default function ReviewPage() {
         <main className="flex-1 px-6 pb-8 pt-4">
           <div className="flex h-full min-h-[520px] flex-col gap-4">
             <div className="flex items-center justify-between px-2 typ-caption text-slate-500">
-              <span>PRDと指摘を並べて確認できます。ドラッグで幅を調整してください。</span>
+              <span>ドキュメントと指摘を並べて確認できます。ドラッグで幅を調整してください。</span>
               <span>{issues.length} 件の指摘</span>
             </div>
             <ResizableWorkspace
@@ -164,7 +164,7 @@ function ResizableWorkspace({ viewMode, expandedIssueId, reviewId, issues, prdTe
     <div ref={containerRef} className={containerClasses}>
       <section className="flex min-h-0 min-w-[280px] flex-col rounded-xl bg-white px-5 pb-5 pt-4" style={leftPaneStyle}>
         <header className="mb-3 flex items-center justify-between gap-3">
-          <h2 className="typ-heading-xs text-slate-900">PRD ドキュメント</h2>
+          <h2 className="typ-heading-xs text-slate-900">ドキュメント</h2>
           <button
             type="button"
             onClick={resetRatio}

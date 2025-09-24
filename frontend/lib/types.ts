@@ -66,4 +66,5 @@ export interface AgentRole {
   bio: string | null;              // "バックエンド設計とAPIの専門家として..."
   tags: string[] | null;           // ["#API設計", "#スケーラビリティ"]
   avatar_url: string | null;       // "/avatars/engineer.png"
+  personal_name: string | null;    // "佐藤 彰"
 }

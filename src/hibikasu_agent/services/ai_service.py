@@ -265,6 +265,17 @@ class AiService(AbstractReviewService):
         matched_agents: list[str] = []
         state_delta = getattr(getattr(event, "actions", None), "state_delta", None)
         if isinstance(state_delta, dict):
+            # レスポンスサイズをログ出力
+            for key, value in state_delta.items():
+                if value:
+                    value_str = str(value)
+                    logger.info(f"ADK state delta - key: {key}, size: {len(value_str)} chars")
+
+                    # 巨大なレスポンスを警告
+                    if len(value_str) > 50000:
+                        logger.warning(f"⚠️ HUGE RESPONSE DETECTED! key: {key}, size: {len(value_str)} chars")
+                        logger.info(f"Response preview (first 1000 chars): {value_str[:1000]}")
+
             for state_key in state_delta:
                 agent_key = STATE_KEY_TO_AGENT_KEY.get(state_key)
                 if agent_key and agent_key in expected:

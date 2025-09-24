@@ -65,6 +65,13 @@ def create_specialist(  # noqa: PLR0913
     if not final_instruction:
         logger.warning(f"Empty instruction for specialist agent; name={name}")
 
+    # ログ出力：エージェントに送信されるインストラクション
+    logger.info(
+        f"Creating specialist agent - name: {name}, model: {model}, "
+        f"instruction_length: {len(final_instruction)}, output_key: {output_key}"
+    )
+    logger.info(f"Agent {name} instruction preview: {final_instruction[:200]}...")
+
     # Call with explicit arguments to satisfy static typing (no **kwargs dict)
     if output_schema is not None and output_key is not None:
         agent = LlmAgent(
