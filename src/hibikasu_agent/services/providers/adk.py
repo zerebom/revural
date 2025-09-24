@@ -37,7 +37,7 @@ class ADKService:
         - 対話用コーディネーターエージェント
         - 対話履歴を保持するセッションサービス
         """
-        model_name = os.getenv("ADK_MODEL") or "gemini-2.5-flash"
+        model_name = os.getenv("ADK_MODEL") or "gemini-2.5-flash-lite"
         self._coordinator_agent = create_coordinator_agent(model=model_name)
         self._chat_session_service = InMemorySessionService()  # type: ignore[no-untyped-call]
         self._default_specialist_agents: list[str] = [
@@ -90,7 +90,7 @@ class ADKService:
             selected_agents: 使用するエージェントのロール一覧（例: ["engineer", "pm"]）
         """
         try:
-            model_name = os.getenv("ADK_MODEL") or "gemini-2.5-flash"
+            model_name = os.getenv("ADK_MODEL") or "gemini-2.5-flash-lite"
             agent = create_parallel_review_agent(model=model_name, selected_agents=selected_agents)
 
             session_ctx: AdkSessionContext = await self._session_factory.create_session(agent)
