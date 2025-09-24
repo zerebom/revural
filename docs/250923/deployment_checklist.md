@@ -10,7 +10,7 @@
 
 - [ ] **Google Cloud AI技術使用** ✅ 実装済み
   - [x] ADK (Agent Development Kit)
-  - [x] Gemini API (gemini-2.5-flash)
+- [x] Gemini API (gemini-2.5-flash-lite)
 
 ### 提出物
 - [ ] **GitHub公開リポジトリURL**

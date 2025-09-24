@@ -6,7 +6,7 @@
 
 #### ✅ Google Cloud AI技術の利用 (既に適合)
 - **ADK (Agent Development Kit)**: ✅ 実装済み
-- **Gemini API**: ✅ gemini-2.5-flash使用中
+- **Gemini API**: ✅ gemini-2.5-flash-lite使用中
 - **マルチエージェントシステム**: ✅ 9種類の専門AIエージェント
 
 #### ❌ Google Cloud アプリケーション実行プロダクトの利用 (要実装)
@@ -199,7 +199,7 @@ GOOGLE_API_KEY=your_gemini_api_key
 GOOGLE_CLOUD_PROJECT=your_project_id
 CORS_ALLOW_ORIGINS=https://your-frontend-url.a.run.app
 HIBIKASU_LOG_LEVEL=INFO
-ADK_MODEL=gemini-2.5-flash
+ADK_MODEL=gemini-2.5-flash-lite
 ```
 
 #### フロントエンド
