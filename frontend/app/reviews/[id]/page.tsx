@@ -15,9 +15,22 @@ export default function ReviewDetailPage({ params }: { params: Promise<{ id: str
   const setExpandedIssueId = useReviewStore((s) => s.setExpandedIssueId);
   const setPrdText = useReviewStore((s) => s.setPrdText);
 
+  // Improved SWR configuration to prevent infinite polling
   const { data, error, isLoading } = useSWR(["review", id], () => api.getReview(id), {
-    refreshInterval: (latestData) => (latestData?.status === "processing" ? 1500 : 0),
+    refreshInterval: (latestData) => {
+      // Stop polling if review is completed or failed
+      if (latestData?.status === "completed" || latestData?.status === "failed") {
+        return 0;
+      }
+      // Continue polling only if processing
+      if (latestData?.status === "processing") {
+        return 1000;
+      }
+      return 0;
+    },
     revalidateOnFocus: false,
+    errorRetryCount: 3, // Limit retry attempts
+    errorRetryInterval: 5000, // 5 second intervals for retries
   });
 
   useEffect(() => {

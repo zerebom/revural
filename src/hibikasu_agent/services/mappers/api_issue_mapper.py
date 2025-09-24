@@ -25,6 +25,13 @@ def map_api_issue(item: dict[str, object], prd_text: str) -> ApiIssue:
     """Transform a raw ADK issue dictionary into an API response model."""
 
     original_text = str(item.get("original_text") or "")
+
+    # Safety: Truncate original_text if it's too long (prevents huge responses)
+    if len(original_text) > 200:
+        # Remove excessive whitespace and newlines, then truncate
+        cleaned_text = " ".join(original_text.split())
+        original_text = cleaned_text[:200] + "..." if len(cleaned_text) > 200 else cleaned_text
+
     span = calculate_span(prd_text, original_text)
 
     _comment = str(item.get("comment") or "")
