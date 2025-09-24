@@ -44,7 +44,7 @@ class FinalIssuesAggregatorAgent(BaseAgent):
 
 
 def create_parallel_review_agent(
-    model: str = "gemini-2.5-flash", *, selected_agents: list[str] | None = None
+    model: str = "gemini-2.5-flash-lite", *, selected_agents: list[str] | None = None
 ) -> SequentialAgent:
     """Build the review workflow agent using a sequential pipeline based on ADK best practices.
 
@@ -103,7 +103,7 @@ def create_parallel_review_agent(
 # Export a default root agent for optional discovery/use
 
 
-def create_coordinator_agent(model: str = "gemini-2.5-flash") -> LlmAgent:
+def create_coordinator_agent(model: str = "gemini-2.5-flash-lite") -> LlmAgent:
     """Coordinator that routes by free-text to specialist chat agents.
 
     Decoupled from the review pipeline. Uses LLM-driven delegation (transfer_to_agent)
@@ -142,4 +142,4 @@ def create_coordinator_agent(model: str = "gemini-2.5-flash") -> LlmAgent:
     return coordinator
 
 
-root_agent = create_parallel_review_agent(model="gemini-2.5-flash")
+root_agent = create_parallel_review_agent(model="gemini-2.5-flash-lite")

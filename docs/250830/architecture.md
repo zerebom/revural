@@ -35,7 +35,7 @@ graph TD
 # Engineer Agent
 engineer_agent = LlmAgent(
     name="engineer_specialist",
-    model="gemini-2.5-flash",
+    model="gemini-2.5-flash-lite",
     description="バックエンドエンジニアの専門的観点からPRDをレビュー",
     instruction="""
     あなたは経験豊富なバックエンドエンジニアです。
@@ -50,7 +50,7 @@ engineer_agent = LlmAgent(
 # UX Designer Agent
 ux_designer_agent = LlmAgent(
     name="ux_designer_specialist",
-    model="gemini-2.5-flash",
+    model="gemini-2.5-flash-lite",
     description="UXデザイナーの専門的観点からPRDをレビュー",
     instruction="..." # prompts/agents.tomlから読み込み
 )
@@ -58,7 +58,7 @@ ux_designer_agent = LlmAgent(
 # QA Tester Agent
 qa_tester_agent = LlmAgent(
     name="qa_tester_specialist",
-    model="gemini-2.5-flash",
+    model="gemini-2.5-flash-lite",
     description="QAテスターの専門的観点からPRDをレビュー",
     instruction="..." # prompts/agents.tomlから読み込み
 )
@@ -66,7 +66,7 @@ qa_tester_agent = LlmAgent(
 # PM Agent
 pm_agent = LlmAgent(
     name="pm_specialist",
-    model="gemini-2.5-flash",
+    model="gemini-2.5-flash-lite",
     description="プロダクトマネージャーの専門的観点からPRDをレビュー",
     instruction="..." # prompts/agents.tomlから読み込み
 )
@@ -79,7 +79,7 @@ pm_agent = LlmAgent(
 ```python
 orchestrator = LlmAgent(
     name="review_orchestrator",
-    model="gemini-2.5-flash",
+    model="gemini-2.5-flash-lite",
     description="PRDレビューを統合管理するコーディネーター",
     instruction="""
     あなたはPRDレビューオーケストレーターです。

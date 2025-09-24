@@ -13,7 +13,7 @@ Hibikasu Agentは、Google ADK (Agent Development Kit) を活用した仮想フ�
 ### 技術スタック
 - **言語**: Python 3.12+
 - **フレームワーク**: Google ADK (Agent Development Kit)
-- **LLMモデル**: Gemini (gemini-2.5-flash)
+- **LLMモデル**: Gemini (gemini-2.5-flash-lite)
 - **パッケージ管理**: uv
 - **データ形式**: JSON, Pydantic models
 
@@ -53,7 +53,7 @@ Hibikasu Agentは、Google ADK (Agent Development Kit) を活用した仮想フ�
 
 ### Google ADK関連
 - APIキーの環境変数設定が必須（`GOOGLE_API_KEY`）
-- レート制限に注意（特にgemini-2.5-flashモデル使用時）
+- レート制限に注意（特にgemini-2.5-flash-liteモデル使用時）
 - プロンプトエンジニアリングでペルソナの個性を表現
 
 ### エージェント間通信

@@ -76,7 +76,7 @@ GOOGLE_CLOUD_PROJECT=your_project_id
 
 # AI設定
 HIBIKASU_API_MODE=ai
-ADK_MODEL=gemini-2.5-flash
+ADK_MODEL=gemini-2.5-flash-lite
 ADK_REVIEW_TIMEOUT_SEC=40
 
 # その他
@@ -191,7 +191,7 @@ steps:
       '--region', 'asia-northeast1',
       '--platform', 'managed',
       '--allow-unauthenticated',
-      '--set-env-vars', 'GOOGLE_CLOUD_PROJECT=$PROJECT_ID,HIBIKASU_API_MODE=ai,ADK_MODEL=gemini-2.5-flash',
+      '--set-env-vars', 'GOOGLE_CLOUD_PROJECT=$PROJECT_ID,HIBIKASU_API_MODE=ai,ADK_MODEL=gemini-2.5-flash-lite',
       '--set-secrets', 'GOOGLE_API_KEY=gemini-api-key:latest'
     ]
 

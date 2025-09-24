@@ -38,7 +38,7 @@ def create_specialist(  # noqa: PLR0913
     *,
     name: str,
     description: str,
-    model: str = "gemini-2.5-flash",
+    model: str = "gemini-2.5-flash-lite",
     instruction: str | None = None,
     system_prompt: str | None = None,
     task_prompt: str | None = None,
@@ -113,7 +113,7 @@ def create_specialist(  # noqa: PLR0913
 def create_specialist_from_definition(
     definition: SpecialistDefinition,
     *,
-    model: str = "gemini-2.5-flash",
+    model: str = "gemini-2.5-flash-lite",
 ) -> LlmAgent:
     """Create a specialist agent using a shared configuration entry."""
 
@@ -134,7 +134,7 @@ def create_specialist_from_definition(
 def create_specialist_for_role(
     role: str,
     *,
-    model: str = "gemini-2.5-flash",
+    model: str = "gemini-2.5-flash-lite",
 ) -> LlmAgent:
     """Convenience wrapper that builds a specialist from a role identifier."""
 
@@ -148,7 +148,7 @@ def create_specialist_for_role(
 def create_specialists_from_config(
     definitions: Iterable[SpecialistDefinition],
     *,
-    model: str = "gemini-2.5-flash",
+    model: str = "gemini-2.5-flash-lite",
 ) -> list[LlmAgent]:
     """Build review specialists from shared configuration entries."""
 
@@ -158,7 +158,7 @@ def create_specialists_from_config(
 def create_role_agents(
     role_key: str,
     *,
-    model: str = "gemini-2.5-flash",
+    model: str = "gemini-2.5-flash-lite",
     review_output_key: str,
     name_prefix: str | None = None,
 ) -> tuple[LlmAgent, LlmAgent]:

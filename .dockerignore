@@ -1,0 +1,33 @@
+# Python build artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyi
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments & local configs
+.venv/
+.env
+.env.*
+.python-version
+.serena/
+
+# Node / frontend assets (backend imageには不要)
+node_modules/
+.next/
+pnpm-debug.log
+yarn-error.log
+npm-debug.log
+
+# VCS & editor metadata
+.git
+.gitignore
+.codex/
+.cursor/
+.vscode/
+.DS_Store
