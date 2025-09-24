@@ -1,5 +1,6 @@
 "use client";
 
+import type { JSX } from "react";
 import { useCallback, useMemo, useState } from "react";
 import useSWR from "swr";
 import { useRouter } from "next/navigation";
